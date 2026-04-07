@@ -37,6 +37,27 @@
                     </ul>
                 </li>
 
+                @php 
+                $productRoutes = [                
+                'admin.products.index','admin.products.create','admin.products.edit'
+                ]; 
+                @endphp 
+                <li class="pc-item pc-hasmenu {{ in_array($currentRoute,$productRoutes) ? 'active pc-trigger' : '' }}">
+                    <a href="javascript:void(0);" class="pc-link ">
+                        <span class="pc-micon"><i class="material-icons-two-tone">watch</i></span>
+                        <span class="pc-mtext">Manage Products</span>
+                        <span class="pc-arrow"><i data-feather="chevron-right"></i></span>
+                    </a>
+                    <ul class="pc-submenu">
+                        <li class="pc-item {{ $currentRoute === 'admin.products.index' ? 'active' : '' }}">
+                            <a class="pc-link " href="{{route('admin.products.index')}}">All Products</a>
+                        </li>                       
+                        <li class="pc-item {{ $currentRoute === 'admin.products.create' ? 'active' : '' }}">
+                            <a class="pc-link " href="{{route('admin.products.create')}}">Add Product</a>
+                        </li>                       
+                    </ul>
+                </li>
+
             </ul>
         </div>
     </div>

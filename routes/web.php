@@ -64,6 +64,10 @@ Route::group(['middleware' => 'disablepreventback'], function () {
 			Route::get('download-deal-excel', [DealController::class, 'downloadProductExcel'])->name('deal-download-excel');
 			
 			Route::get('/get-cities/{state_id}', [DealController::class, 'getCitiesByStateID'])->name('get-cities');
+
+			/** product routes */
+			Route::resource('products', ProductController::class);
+			Route::any('delete-product/{id}', [ProductController::class, 'destroy'])->name('delete-product');
 		});	
 	});
 });
