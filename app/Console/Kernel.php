@@ -12,6 +12,8 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {	        
+        // Run Xero token refresh every six hours to keep token active
+        $schedule->command('xero:refresh-token')->everySixHours();
     }
 
     /**

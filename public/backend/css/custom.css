@@ -1,20 +1,20 @@
 .auth-wrapper .auth-content:not(.container) {
 	width: 500px;
 }
-.auth-wrapper {	
+.auth-wrapper {
 	background: #F0F2F8;
 }
 label.error {
-	color: #e62020;	
-	position: relative;	
-	width: 100%;	
+	color: #e62020;
+	position: relative;
+	width: 100%;
 	text-align: left;
 }
 span.error {
-	color: #e62020;	
-	position: relative;	
-	width: 100%;	
-	text-align: left;  
+	color: #e62020;
+	position: relative;
+	width: 100%;
+	text-align: left;
 }
 
 input.error {
@@ -22,7 +22,7 @@ input.error {
 }
 
 .b-brand span {
-	color: #fff;
+	color: #000;
 	font-weight: bold;
 	font-size: 17px;
 }
@@ -32,7 +32,7 @@ input.error {
 	box-shadow: none;
 	position: inherit;
 	display: inline-flex;
-	align-items: center;	
+	align-items: center;
 	min-height: 55px;
 	padding: 0px;
 }
@@ -61,8 +61,8 @@ span.required{color: #e62020;}
     }
 }
 td {
-  white-space: normal !important; 
-  word-wrap: break-word;  
+  white-space: normal !important;
+  word-wrap: break-word;
 }
 table {
   /* table-layout: fixed; */
