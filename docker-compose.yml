@@ -1,0 +1,134 @@
+services:
+  app:
+    build: .
+    container_name: watchadmin-app
+    working_dir: /var/www/html
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+      REDIS_HOST: redis
+    ports:
+      - "8000:9000"
+    volumes:
+      - .:/var/www/html
+      - ./storage:/var/www/html/storage
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@fsockopen('127.0.0.1',9000)?0:1);"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      - db
+      - redis
+    networks:
+      - watchadmin
+
+  db:
+    image: mysql:8.0
+    container_name: watchadmin-db
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: watchadmin
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./watchadmin.sql:/docker-entrypoint-initdb.d/watchadmin.sql
+    networks:
+      - watchadmin
+
+  redis:
+    image: redis:7-alpine
+    container_name: watchadmin-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - watchadmin
+
+  nginx:
+    image: nginx:alpine
+    container_name: watchadmin-nginx
+    depends_on:
+      - app
+    ports:
+      - "8080:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/health >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    volumes:
+      - .:/var/www/html
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - watchadmin
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: watchadmin-mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - watchadmin
+
+  worker:
+    build: .
+    container_name: watchadmin-worker
+    working_dir: /var/www/html
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+      REDIS_HOST: redis
+    command: php artisan queue:work --sleep=3 --tries=3 --timeout=90
+    volumes:
+      - .:/var/www/html
+      - ./storage:/var/www/html/storage
+    depends_on:
+      - app
+      - db
+      - redis
+    networks:
+      - watchadmin
+
+  scheduler:
+    build: .
+    container_name: watchadmin-scheduler
+    working_dir: /var/www/html
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+      REDIS_HOST: redis
+    command: sh -c "while sleep 60; do php artisan schedule:run --verbose --no-interaction; done"
+    volumes:
+      - .:/var/www/html
+      - ./storage:/var/www/html/storage
+    depends_on:
+      - app
+      - db
+      - redis
+    networks:
+      - watchadmin
+
+volumes:
+  db_data:
+
+networks:
+  watchadmin:

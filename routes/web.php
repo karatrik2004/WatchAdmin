@@ -34,6 +34,35 @@ Route::get('/clear-all', function () {
     return 'All cache cleared';
 });
 
+Route::get('/health', function () {
+    try {
+        \Illuminate\Support\Facades\DB::connection()->getPdo();
+    } catch (\Throwable $e) {
+        return response()->json([
+            'status' => 'unhealthy',
+            'db' => 'failed',
+            'error' => $e->getMessage(),
+        ], 503);
+    }
+
+    try {
+        \Illuminate\Support\Facades\Redis::connection()->ping();
+    } catch (\Throwable $e) {
+        return response()->json([
+            'status' => 'unhealthy',
+            'redis' => 'failed',
+            'error' => $e->getMessage(),
+        ], 503);
+    }
+
+    return response()->json([
+        'status' => 'healthy',
+        'app' => 'ok',
+        'db' => 'ok',
+        'redis' => 'ok',
+    ]);
+})->name('health');
+
 require __DIR__ . '/auth.php';
 
 /** Front-end routes START  */

@@ -35,9 +35,7 @@
             defer>
         </script>
 
-<script>
-    jQuery('.validatedForm').validate();
-</script>
+ 
 <script>
     initBrandAutocomplete($("#brand_name"));
     function initBrandAutocomplete(inputField) {

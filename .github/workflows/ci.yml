@@ -1,0 +1,462 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PHP_VERSION: '8.2'
+
+jobs:
+  lint:
+    name: Code Style (Pint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          tools: composer
+          coverage: none
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Run Pint
+        run: vendor/bin/pint --test
+
+  static-analysis:
+    name: Static Analysis (PHPStan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          tools: composer
+          coverage: none
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Run PHPStan
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          tools: composer
+          coverage: none
+
+      - name: Composer audit
+        run: composer audit
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: lint
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: drai
+          POSTGRES_PASSWORD: drai_test
+          POSTGRES_DB: drai_testing
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U drai"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:XEm/wrzqx6YA3FmrE8H/1dzXADnW4FzDKZTniVfshQc=
+      APP_DEBUG: true
+      APP_URL: http://localhost
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: drai_testing
+      DB_USERNAME: drai
+      DB_PASSWORD: drai_test
+      DB_SSLMODE: prefer
+      CACHE_DRIVER: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+      FILESYSTEM_DISK: local
+      LOG_CHANNEL: stack
+      LOG_LEVEL: error
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: pgsql, pdo_pgsql, bcmath, gd, zip
+          coverage: pcov
+          tools: composer
+          ini-values: memory_limit=1G, pcov.directory=app
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Prepare environment
+        run: |
+          cp .env.testing .env
+          php artisan key:generate
+          openssl genrsa -out storage/oauth-private.key 4096 2>/dev/null
+          openssl rsa -in storage/oauth-private.key -pubout -out storage/oauth-public.key 2>/dev/null
+          chmod 600 storage/oauth-private.key storage/oauth-public.key
+          php artisan migrate --force
+
+      - name: Run Unit Tests with coverage
+        run: |
+          vendor/bin/phpunit --testsuite Unit \
+            --coverage-clover=coverage-unit.xml \
+            --coverage-html=coverage-html-unit \
+            --coverage-text \
+            --log-junit=junit-unit.xml
+
+      - name: Upload unit coverage HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html-unit
+          path: coverage-html-unit/
+          retention-days: 14
+
+      - name: Upload unit coverage XML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-unit-xml
+          path: coverage-unit.xml
+          retention-days: 14
+
+      - name: Upload unit test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-unit
+          path: junit-unit.xml
+          retention-days: 14
+
+  feature-tests:
+    name: Feature Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [lint, static-analysis]
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: drai
+          POSTGRES_PASSWORD: drai_test
+          POSTGRES_DB: drai_testing
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U drai"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:XEm/wrzqx6YA3FmrE8H/1dzXADnW4FzDKZTniVfshQc=
+      APP_DEBUG: true
+      APP_URL: http://localhost
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: drai_testing
+      DB_USERNAME: drai
+      DB_PASSWORD: drai_test
+      DB_SSLMODE: prefer
+      CACHE_DRIVER: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+      FILESYSTEM_DISK: local
+      BROADCAST_DRIVER: log
+      LOG_CHANNEL: stack
+      LOG_LEVEL: error
+      COMETCHAT_APP_ID: fake-cometchat-app-id
+      COMETCHAT_REGION: us
+      COMETCHAT_API_KEY: fake-cometchat-api-key
+      GOOGLE_CLIENT_ID: fake-google-client-id
+      GOOGLE_CLIENT_SECRET: fake-google-client-secret
+      GOOGLE_REDIRECT_URI: http://localhost/auth/google/callback
+      MICROSOFT_CLIENT_ID: fake-microsoft-client-id
+      MICROSOFT_CLIENT_SECRET: fake-microsoft-client-secret
+      MICROSOFT_REDIRECT_URI: http://localhost/auth/microsoft/callback
+      TOKEN_AUTH: fake-token-auth
+      EMAIL_REQUEST_ACCOUNT: test@example.com
+      ASSET_URL_LOGO: https://fake-assets.test/logo.png
+      AWS_ACCESS_KEY_ID: fake-aws-key
+      AWS_SECRET_ACCESS_KEY: fake-aws-secret
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_BUCKET: fake-bucket
+      PASSPORT_PERSONAL_ACCESS_CLIENT_ID: 1
+      PASSPORT_PERSONAL_ACCESS_CLIENT_SECRET: fake-passport-secret
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: pgsql, pdo_pgsql, bcmath, gd, zip
+          coverage: pcov
+          tools: composer
+          ini-values: memory_limit=1G, pcov.directory=app
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Generate Passport keys
+        run: |
+          openssl genpkey -algorithm RSA -out /tmp/passport-private.pem -pkeyopt rsa_keygen_bits:2048
+          openssl rsa -in /tmp/passport-private.pem -pubout -out /tmp/passport-public.pem
+          echo "PASSPORT_PRIVATE_KEY<<PASSPORT_EOF" >> $GITHUB_ENV
+          cat /tmp/passport-private.pem >> $GITHUB_ENV
+          echo "PASSPORT_EOF" >> $GITHUB_ENV
+          echo "PASSPORT_PUBLIC_KEY<<PASSPORT_PUB_EOF" >> $GITHUB_ENV
+          cat /tmp/passport-public.pem >> $GITHUB_ENV
+          echo "PASSPORT_PUB_EOF" >> $GITHUB_ENV
+
+      - name: Run migrations
+        run: php artisan migrate --force
+
+      - name: Run Feature Tests with coverage
+        run: |
+          vendor/bin/phpunit --testsuite Feature \
+            --coverage-clover=coverage-feature.xml \
+            --coverage-html=coverage-html-feature \
+            --coverage-text \
+            --log-junit=junit-feature.xml
+
+      - name: Upload feature coverage HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html-feature
+          path: coverage-html-feature/
+          retention-days: 14
+
+      - name: Upload feature coverage XML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-feature-xml
+          path: coverage-feature.xml
+          retention-days: 14
+
+      - name: Upload feature test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-feature
+          path: junit-feature.xml
+          retention-days: 14
+
+  migration-safety:
+    name: Migration Safety Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: lint
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: drai
+          POSTGRES_PASSWORD: drai_test
+          POSTGRES_DB: drai_testing
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U drai"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:XEm/wrzqx6YA3FmrE8H/1dzXADnW4FzDKZTniVfshQc=
+      APP_DEBUG: true
+      APP_URL: http://localhost
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: drai_testing
+      DB_USERNAME: drai
+      DB_PASSWORD: drai_test
+      DB_SSLMODE: prefer
+      CACHE_DRIVER: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: pgsql, pdo_pgsql
+          coverage: none
+          tools: composer
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Run existing migrations (baseline)
+        run: php artisan migrate --force
+
+      - name: Check new migrations for destructive operations
+        run: |
+          chmod +x scripts/check-migration-safety.sh
+          scripts/check-migration-safety.sh
+
+  coverage-summary:
+    name: Coverage Summary
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [unit-tests, feature-tests]
+    if: always() && (needs.unit-tests.result == 'success' || needs.feature-tests.result == 'success')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download unit coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-unit-xml
+          path: coverage/
+        continue-on-error: true
+
+      - name: Download feature coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-feature-xml
+          path: coverage/
+        continue-on-error: true
+
+      - name: Coverage summary
+        run: |
+          echo "## Code Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          for file in coverage/coverage-*.xml; do
+            if [ -f "$file" ]; then
+              SUITE=$(basename "$file" .xml | sed 's/coverage-//')
+              # Extract line coverage from clover XML
+              COVERED=$(grep -oP 'coveredstatements="\K[0-9]+' "$file" | head -1 || echo "0")
+              TOTAL=$(grep -oP 'statements="\K[0-9]+' "$file" | head -1 || echo "0")
+              if [ "$TOTAL" -gt 0 ]; then
+                PCT=$(echo "scale=2; $COVERED * 100 / $TOTAL" | bc)
+                echo "| **${SUITE}** | ${COVERED}/${TOTAL} statements | **${PCT}%** |" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "| **${SUITE}** | No coverage data | - |" >> $GITHUB_STEP_SUMMARY
+              fi
+            fi
+          done
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Download the HTML coverage reports from the workflow artifacts for detailed analysis." >> $GITHUB_STEP_SUMMARY
+
+  ci-status:
+    name: CI Status
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    if: always()
+    needs: [lint, static-analysis, security-audit, unit-tests, feature-tests]
+    steps:
+      - name: Check pipeline status
+        run: |
+          if [ "${{ needs.lint.result }}" != "success" ]; then
+            echo "Lint failed"
+            exit 1
+          fi
+          if [ "${{ needs.static-analysis.result }}" != "success" ]; then
+            echo "Static analysis failed"
+            exit 1
+          fi
+          if [ "${{ needs.unit-tests.result }}" != "success" ]; then
+            echo "Unit tests failed"
+            exit 1
+          fi
+          if [ "${{ needs.feature-tests.result }}" != "success" ]; then
+            echo "Feature tests failed"
+            exit 1
+          fi
+          # Security audit is informational, don't fail on it
+          if [ "${{ needs.security-audit.result }}" != "success" ]; then
+            echo "::warning::Security audit failed (non-blocking)"
+          fi
+          echo "All CI checks passed!"

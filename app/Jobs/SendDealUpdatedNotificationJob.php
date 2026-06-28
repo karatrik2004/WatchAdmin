@@ -58,7 +58,7 @@ class SendDealUpdatedNotificationJob implements ShouldQueue
         if (!empty($htmlBody)) {
             try {
                 $service = app(InvoicePdfService::class);
-                $pdf = $service->generateShippingInvoicePdf($this->deal);
+                $pdf = $service->generateSalesInvoicePdf($this->deal);
                 $attachments = [[
                     'name' => $pdf['filename'],
                     'content' => $pdf['content'],

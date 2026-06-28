@@ -14,7 +14,7 @@
         @endif
     </div>
     <div class="col-sm-4">
-        <label class="form-label">Reference Number </label>
+        <label class="form-label">Reference Number <span class="required" aria-required="true">*</span></label>
         {{ html()->text('material_watch')
             ->id('material_watch')
             ->class('form-control form-control-user')
@@ -34,21 +34,21 @@
 </div>
 <div class="form-group row">
     <div class="col-sm-4">
-        <label class="form-label">Condition </label>
+        <label class="form-label">Condition <span class="required" aria-required="true">*</span></label>
         {{ html()->text('condition')->class('form-control form-control-user') }}
         @if ($errors->has('condition'))
             <span class="error" role="alert">{{ $errors->first('condition') }}</span>
         @endif
     </div>
     <div class="col-sm-4">
-        <label class="form-label">Year</label>
+        <label class="form-label">Year <span class="required" aria-required="true">*</span></label>
         {{ html()->text('year')->class('form-control form-control-user phoneno')->maxlength(4) }}
         @if ($errors->has('year'))
             <span class="error" role="alert">{{ $errors->first('year') }}</span>
         @endif
     </div>
     <div class="col-sm-4">
-        <label class="form-label">Full set or not </label>
+        <label class="form-label">Full set or not <span class="required" aria-required="true">*</span></label>
         {{ html()->select('full_set', config('constants.FULL_STATUS'))->class('form-control')->id('full_set')  }}
         @if ($errors->has('full_set'))
             <span class="error" role="alert">{{ $errors->first('full_set') }}</span>
@@ -57,7 +57,7 @@
 </div>
 <div class="form-group row">
     <div class="col-sm-4">
-        <label class="form-label">Purchase Price</label>
+        <label class="form-label">Purchase Price <span class="required" aria-required="true">*</span></label>
         <div class="input-group">
             <select name="purchase_currency" id="purchase_currency" class="form-control" style="max-width:120px;">
                 @foreach(config('constants.CURRENCIES', ['aud' => 'AUD', 'usd' => 'USD']) as $code => $label)
@@ -72,14 +72,14 @@
         @endif
     </div>
     <div class="col-sm-4">
-        <label class="form-label">Estimated Sale Price </label>
+        <label class="form-label">Estimated Sale Price <span class="required" aria-required="true">*</span></label>
         {{ html()->text('sale_price')->class('form-control form-control-user float-price number') }}
         @if ($errors->has('sale_price'))
             <span class="error" role="alert">{{ $errors->first('sale_price') }}</span>
         @endif
     </div>
     <div class="col-sm-4 nra">
-        <label class="form-label">Brand </label>
+        <label class="form-label">Brand <span class="required" aria-required="true">*</span></label>
         <!-- Backup: AJAX autosuggestion code below
         <input type="text" name="brand_name" id="brand_name" class="form-control brand-autocomplete" autocomplete="off"
                value="{{ old('brand_name') }}">
@@ -101,28 +101,28 @@
         @endif
     </div>
     <div class="col-sm-4 mt-3">
-        <label class="form-label">GST Code</label>
+        <label class="form-label">GST Code <span class="required" aria-required="true">*</span></label>
         {{ html()->select('gst_code', ['' => 'Select Option'] + config('constants.GST_CODE'), old('gst_code', $deal->gst_code ?? ''))->class('form-control')->id('gst_code') }}
         @if ($errors->has('gst_code'))
             <span class="error" role="alert">{{ $errors->first('gst_code') }}</span>
         @endif
     </div>
     <div class="col-sm-4 mt-3">
-        <label class="form-label">Deal Supplier Status</label>
+        <label class="form-label">Deal Supplier Status <span class="required" aria-required="true">*</span></label>
         {{ html()->select('deal_supplier_status', ['' => 'Select Option'] + config('constants.DEAL_SUPPLIER_STATUS'), old('deal_supplier_status', $deal->deal_supplier_status ?? ''))->class('form-control')->id('deal_supplier_status') }}
         @if ($errors->has('deal_supplier_status'))
             <span class="error" role="alert">{{ $errors->first('deal_supplier_status') }}</span>
         @endif
     </div>
     <div class="col-sm-4 mt-3">
-        <label class="form-label">Invoice Number</label>
+        <label class="form-label">Invoice Number <span class="required" aria-required="true">*</span></label>
         {{ html()->text('purchase_invoice_number', old('purchase_invoice_number', $deal->purchase_invoice_number ?? ''))->class('form-control') }}
         @if ($errors->has('purchase_invoice_number'))
             <span class="error" role="alert">{{ $errors->first('purchase_invoice_number') }}</span>
         @endif
     </div>
     <div class="col-sm-4 mt-3">
-        <label class="form-label">Invoice Date</label>
+        <label class="form-label">Invoice Date <span class="required" aria-required="true">*</span></label>
         {{ html()->date('purchase_invoice_date', old('purchase_invoice_date', isset($deal->purchase_invoice_date) ?
     \Carbon\Carbon::parse($deal->purchase_invoice_date)->format('Y-m-d') : ''))->class('form-control') }}
         @if ($errors->has('purchase_invoice_date'))
@@ -130,7 +130,7 @@
         @endif
     </div>
     <div class="col-sm-4 mt-3">
-        <label class="form-label">Dial </label>
+        <label class="form-label">Dial <span class="required" aria-required="true">*</span></label>
         {{ html()->text('dial')->class('form-control form-control-user') }}
         @if ($errors->has('dial'))
             <span class="error" role="alert">{{ $errors->first('dial') }}</span>
@@ -141,7 +141,7 @@
     {{-- Removed extra closing div here --}}
     <div class="form-group row mt-3 mb-3">
         <div class="col-sm-4">
-            <label class="form-label">Select Type </label>
+            <label class="form-label">Select Type 
 
             <div class="form-check form-check-inline">
                 {{ html()->radio('customer_type', old('customer_type', $deal->customer_type ?? '') == 'individual' || !old('customer_type') && empty($deal->customer_type), 'individual')
@@ -165,7 +165,7 @@
     <!-- Individual Fields -->
     <div id="individual-fields" class="row mt-3">
         <div class="col-sm-4">
-            <label class="form-label">First Name </label>
+            <label class="form-label">First Name <span class="required" aria-required="true">*</span></label>
             {{ html()->text('first_name', old('first_name', $deal->first_name ?? ''))
     ->class('form-control individual-field') }}
             @if ($errors->has('first_name'))
@@ -173,7 +173,7 @@
             @endif
         </div>
         <div class="col-sm-4">
-            <label class="form-label">Last Name </label>
+            <label class="form-label">Last Name <span class="required" aria-required="true">*</span></label>
             {{ html()->text('last_name', old('last_name', $deal->last_name ?? ''))
     ->class('form-control individual-field') }}
             @if ($errors->has('last_name'))
@@ -181,7 +181,7 @@
             @endif
         </div>
         <div class="col-sm-4">
-            <label class="form-label">Email </label>
+            <label class="form-label">Email <span class="required" aria-required="true">*</span></label>
             {{ html()->email('email', old('email', $deal->email ?? ''))
     ->class('form-control individual-field') }}
             @if ($errors->has('email'))
@@ -189,7 +189,7 @@
             @endif
         </div>
         <div class="col-sm-4 mt-3">
-            <label class="form-label">Contact Number </label>
+            <label class="form-label">Contact Number <span class="required" aria-required="true">*</span></label>
             {{ html()->text('mobile', old('mobile', $deal->mobile ?? ''))
     ->class('form-control individual-field') }}
             @if ($errors->has('mobile'))
@@ -211,28 +211,28 @@
             </div>--}}
 
             <div class="col-sm-4">
-                <label class="form-label">Address </label>
+                <label class="form-label">Address <span class="required" aria-required="true">*</span></label>
                 {{ html()->text('address')->class('form-control form-control-user individual-field') }}
                 @if ($errors->has('address'))
                     <span class="error" role="alert">{{ $errors->first('address') }}</span>
                 @endif
             </div>
             <div class="col-sm-4">
-                <label class="form-label">City</label>
+                <label class="form-label">City <span class="required" aria-required="true">*</span></label>
                 {{ html()->text('city')->class('form-control individual-field')->id('city') }}
                 @if ($errors->has('city'))
                     <span class="error" role="alert">{{ $errors->first('city') }}</span>
                 @endif
             </div>
             <div class="col-sm-4">
-                <label class="form-label">State</label>
+                <label class="form-label">State <span class="required" aria-required="true">*</span></label>
                 {{ html()->text('state')->class('form-control individual-field')->id('state') }}
                 @if ($errors->has('state'))
                     <span class="error" role="alert">{{ $errors->first('state') }}</span>
                 @endif
             </div>
             <div class="col-sm-4  mt-3">
-                <label class="form-label">Country</label>
+                <label class="form-label">Country <span class="required" aria-required="true">*</span></label>
                 {{ html()->text('country')->class('form-control individual-field')->id('country') }}
                 @if ($errors->has('country'))
                     <span class="error" role="alert">{{ $errors->first('country') }}</span>
@@ -253,7 +253,7 @@
                 @endif
             </div>--}}
             <div class="col-sm-4 mt-3">
-                <label class="form-label">Zipcode </label>
+                <label class="form-label">Zipcode <span class="required" aria-required="true">*</span></label>
                 {{ html()->text('zipcode')->class('form-control form-control-user individual-field') }}
                 @if ($errors->has('zipcode'))
                     <span class="error" role="alert">{{ $errors->first('zipcode') }}</span>
@@ -264,7 +264,7 @@
     <!-- Company Fields -->
     <div id="company-fields" class="row mt-3">
         <div class="col-sm-4">
-            <label class="form-label">Company Name </label>
+            <label class="form-label">Company Name <span class="required" aria-required="true">*</span></label>
             {{ html()->text('company_name', old('company_name', $deal->dealCustomerTypeDetail->company_name ?? ''))
     ->class('form-control company-field') }}
             @if ($errors->has('company_name'))
@@ -272,7 +272,7 @@
             @endif
         </div>
         <div class="col-sm-4">
-            <label class="form-label">Company Email</label>
+            <label class="form-label">Company Email <span class="required" aria-required="true">*</span></label>
             {{ html()->email('company_email', old('company_email', $deal->dealCustomerTypeDetail->company_email ?? ''))
     ->class('form-control company-field') }}
             @if ($errors->has('company_email'))
@@ -280,7 +280,7 @@
             @endif
         </div>
         <div class="col-sm-4">
-            <label class="form-label">Company Contact Number</label>
+            <label class="form-label">Company Contact Number <span class="required" aria-required="true">*</span></label>
             {{ html()->text('company_mobile', old('company_mobile', $deal->dealCustomerTypeDetail->company_mobile ?? ''))
     ->class('form-control company-field') }}
             @if ($errors->has('company_name'))
@@ -322,7 +322,7 @@
         <div class="form-group row">
 
             <div class="col-sm-4">
-                <label class="form-label">Address</label>
+                <label class="form-label">Address <span class="required" aria-required="true">*</span></label>
                 {{ html()->text('company_address', old('company_address', $deal->dealCustomerTypeDetail->company_address ?? ''))
     ->class('form-control form-control-user company-field') }}
                 @if ($errors->has('company_address'))
@@ -330,7 +330,7 @@
                 @endif
             </div>
             <div class="col-sm-4">
-                <label class="form-label">City</label>
+                <label class="form-label">City <span class="required" aria-required="true">*</span></label>
                 <input type="text" name="company_city" id="company_city" class="form-control company-field"
                     value="{{ old('company_city', $deal->dealCustomerTypeDetail->company_city ?? '') }}">
                 @if ($errors->has('company_city'))
@@ -338,7 +338,7 @@
                 @endif
             </div>
             <div class="col-sm-4">
-                <label class="form-label">State</label>
+                <label class="form-label">State <span class="required" aria-required="true">*</span></label>
                 <input type="text" name="company_state" id="company_state" class="form-control company-field"
                     value="{{ old('company_state', $deal->dealCustomerTypeDetail->company_state ?? '') }}">
                 @if ($errors->has('company_state'))
@@ -346,7 +346,7 @@
                 @endif
             </div>
             <div class="col-sm-4 mt-3">
-                <label class="form-label">Country</label>
+                <label class="form-label">Country <span class="required" aria-required="true">*</span></label>
                 <input type="text" name="company_country" id="company_country" class="form-control"
                     value="{{ old('company_country', $deal->dealCustomerTypeDetail->company_country ?? '') }}">
                 @if ($errors->has('company_country'))
@@ -391,7 +391,7 @@
 
 
             <div class="col-sm-4 mt-3">
-                <label class="form-label">Zipcode</label>
+                <label class="form-label">Zipcode <span class="required" aria-required="true">*</span></label>
                 {{ html()->text('company_zip_code', old('company_zip_code', $deal->dealCustomerTypeDetail->company_zip_code ?? ''))
     ->class('form-control form-control-user company-field') }}
                 @if ($errors->has('company_zip_code'))
@@ -400,7 +400,7 @@
             </div>
 
             <div class="col-sm-4 mt-3">
-                <label class="form-label">ABN Number</label>
+                <label class="form-label">ABN Number <span class="required" aria-required="true">*</span></label>
                 {{ html()->text('abn_number', old('abn_number', $deal->dealCustomerTypeDetail->abn_number ?? ''))
     ->class('form-control form-control-user company-field') }}
                 @if ($errors->has('abn_number'))
@@ -409,7 +409,7 @@
             </div>
 
             <div class="col-sm-4 mt-3">
-                <label class="form-label">Director's Name</label>
+                <label class="form-label">Director's Name <span class="required" aria-required="true">*</span></label>
                 {{ html()->text('director_name', old('director_name', $deal->dealCustomerTypeDetail->director_name ?? ''))
     ->class('form-control form-control-user company-field') }}
                 @if ($errors->has('director_name'))
@@ -418,7 +418,7 @@
             </div>
 
             <div class="col-sm-4 mt-3">
-                <label class="form-label">Second-hand Dealer Licence Number</label>
+                <label class="form-label">Second-hand Dealer Licence Number <span class="required" aria-required="true">*</span></label>
                 {{ html()->text('dealer_licence_number', old('dealer_licence_number', $deal->dealCustomerTypeDetail->dealer_licence_number ?? ''))
     ->class('form-control form-control-user company-field') }}
                 @if ($errors->has('dealer_licence_number'))
@@ -830,3 +830,214 @@
             })();
     </script>
 @endif
+
+<script>
+    (function waitForValidate() {
+        if (typeof jQuery === 'undefined' || typeof jQuery.fn.validate === 'undefined') { setTimeout(waitForValidate, 100); return; }
+        jQuery('.validatedForm').validate({
+        rules: {
+            model_number: {
+                required: true
+            },
+            serial_number: {
+                required: true
+            },
+            material_watch: {
+                required: true
+            },
+            condition: {
+                required: true
+            },
+            year: {
+                required: true
+            },
+            full_set: {
+                required: true
+            },
+            purchase_price: {
+                required: true
+            },
+            purchase_currency: {
+                required: true
+            },
+            sale_price: {
+                required: true
+            },
+            brand_id: {
+                required: true
+            },
+            gst_code: {
+                required: true
+            },
+            deal_supplier_status: {
+                required: true
+            },
+            purchase_invoice_number: {
+                required: true
+            },
+            purchase_invoice_date: {
+                required: true
+            },
+            dial: {
+                required: true
+            },
+            customer_type: {
+                required: true
+            },
+            first_name: {
+                required: function() {
+                    return $('input[name="customer_type"]:checked').val() === 'individual';
+                }
+            },
+            last_name: {
+                required: function() {
+                    return $('input[name="customer_type"]:checked').val() === 'individual';
+                }
+            },
+            email: {
+                required: function() {
+                    return $('input[name="customer_type"]:checked').val() === 'individual';
+                },
+                email: function() {
+                    return $('input[name="customer_type"]:checked').val() === 'individual';
+                }
+            },
+            mobile: {
+                required: function() {
+                    return $('input[name="customer_type"]:checked').val() === 'individual';
+                }
+            },
+            address: {
+                required: function() {
+                    return $('input[name="customer_type"]:checked').val() === 'individual';
+                }
+            },
+            city: {
+                required: function() {
+                    return $('input[name="customer_type"]:checked').val() === 'individual';
+                }
+            },
+            state: {
+                required: function() {
+                    return $('input[name="customer_type"]:checked').val() === 'individual';
+                }
+            },
+            country: {
+                required: function() {
+                    return $('input[name="customer_type"]:checked').val() === 'individual';
+                }
+            },
+            zipcode: {
+                required: function() {
+                    return $('input[name="customer_type"]:checked').val() === 'individual';
+                }
+            },
+            company_name: {
+                required: function() {
+                    return $('input[name="customer_type"]:checked').val() === 'company';
+                }
+            },
+            company_email: {
+                required: function() {
+                    return $('input[name="customer_type"]:checked').val() === 'company';
+                },
+                email: function() {
+                    return $('input[name="customer_type"]:checked').val() === 'company';
+                }
+            },
+            company_mobile: {
+                required: function() {
+                    return $('input[name="customer_type"]:checked').val() === 'company';
+                }
+            },
+            company_address: {
+                required: function() {
+                    return $('input[name="customer_type"]:checked').val() === 'company';
+                }
+            },
+            company_city: {
+                required: function() {
+                    return $('input[name="customer_type"]:checked').val() === 'company';
+                }
+            },
+            company_state: {
+                required: function() {
+                    return $('input[name="customer_type"]:checked').val() === 'company';
+                }
+            },
+            company_country: {
+                required: function() {
+                    return $('input[name="customer_type"]:checked').val() === 'company';
+                }
+            },
+            company_zip_code: {
+                required: function() {
+                    return $('input[name="customer_type"]:checked').val() === 'company';
+                }
+            },
+            abn_number: {
+                required: function() {
+                    return $('input[name="customer_type"]:checked').val() === 'company';
+                }
+            },
+            director_name: {
+                required: function() {
+                    return $('input[name="customer_type"]:checked').val() === 'company';
+                }
+            },
+            dealer_licence_number: {
+                required: function() {
+                    return $('input[name="customer_type"]:checked').val() === 'company';
+                }
+            },
+            deal_status: {
+                required: true
+            },
+            status: {
+                required: true
+            }
+        },
+        messages: {
+            model_number: "Model number is required",
+            serial_number: "Serial number is required",
+            material_watch: "Reference number is required",
+            condition: "Condition is required",
+            year: "Year is required",
+            full_set: "Full set status is required",
+            purchase_price: "Purchase price is required",
+            purchase_currency: "Purchase currency is required",
+            sale_price: "Estimated sale price is required",
+            brand_id: "Brand is required",
+            gst_code: "GST code is required",
+            deal_supplier_status: "Deal supplier status is required",
+            purchase_invoice_number: "Invoice number is required",
+            purchase_invoice_date: "Invoice date is required",
+            dial: "Dial is required",
+            customer_type: "Please select a customer type",
+            first_name: "First name is required",
+            last_name: "Last name is required",
+            email: "A valid email is required",
+            mobile: "Mobile number is required",
+            address: "Address is required",
+            city: "City is required",
+            state: "State is required",
+            country: "Country is required",
+            zipcode: "Zipcode is required",
+            company_name: "Company name is required",
+            company_email: "A valid company email is required",
+            company_mobile: "Company mobile is required",
+            company_address: "Company address is required",
+            company_city: "Company city is required",
+            company_state: "Company state is required",
+            company_country: "Company country is required",
+            company_zip_code: "Company zipcode is required",
+            abn_number: "ABN number is required",
+            director_name: "Director name is required",
+            dealer_licence_number: "Dealer licence number is required",
+            deal_status: "Deal status is required",
+            status: "Status is required"
+        }
+    });
+    })();
+</script>
+

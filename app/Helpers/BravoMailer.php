@@ -10,7 +10,7 @@ class BravoMailer
      * Send HTML email to a single recipient via Bravo API using curl.
      * Returns true on success, false otherwise.
      */
-    public static function sendHtml(string $to, string $subject, string $html, array $attachments = []): bool
+    public static function sendHtml(string $to, string $subject, string $html, array $attachments = [], array $cc = []): bool
     {
         $apiUrl = config('services.bravo.url', env('BRAVO_API_URL'));
         $apiKey = config('services.bravo.key', env('BRAVO_API_KEY'));
@@ -27,6 +27,8 @@ class BravoMailer
                 'email' => env('MAIL_FROM_ADDRESS', ''),
             ],
             'to' => [ [ 'email' => $to ] ],
+            // optional cc
+            'cc' => [],
             'subject' => $subject,
             'htmlContent' => $html,
         ];
@@ -45,7 +47,15 @@ class BravoMailer
                 ];
             }
         }
-        
+        // Populate CC if provided
+        if (!empty($cc)) {
+            $payload['cc'] = [];
+            foreach ($cc as $c) {
+                $payload['cc'][] = ['email' => $c];
+            }
+        } else {
+            unset($payload['cc']);
+        }
         
 
         $ch = curl_init($apiUrl);
@@ -83,11 +93,11 @@ class BravoMailer
     /**
      * Send the same HTML email to multiple recipients. Returns array of failures (empty if none).
      */
-    public static function sendBulk(array $recipients, string $subject, string $html, array $attachments = []): array
+    public static function sendBulk(array $recipients, string $subject, string $html, array $attachments = [], array $cc = []): array
     {
         $failures = [];
         foreach ($recipients as $to) {
-            $ok = self::sendHtml($to, $subject, $html, $attachments);
+            $ok = self::sendHtml($to, $subject, $html, $attachments, $cc);
             if (! $ok) {
                 $failures[] = $to;
             }

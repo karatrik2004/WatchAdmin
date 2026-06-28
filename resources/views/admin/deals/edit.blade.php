@@ -85,8 +85,8 @@
                 async
                 defer>
             </script>
+ 
     <script>
-        jQuery('.validatedForm').validate();
         initBrandAutocomplete($("#brand_name"));
         let brandId = $('#brand_id').val();
 
@@ -228,14 +228,23 @@
         $(document).ready(function () {
             function toggleBuyerDetails() {
                 var dealStatus = $('#deal_status').val();
-                if (dealStatus == 3) {
+                if (dealStatus == 3 || dealStatus == 4) {
                     $('#dealSoldOutDiv').show();
-                    $('#buyer_name, #buyer_email, #buyer_country_id, #buyer_state_id, #buyer_city_id, #buyer_address, #buyer_zipcode, #buyer_sale_price, #invoice_number, #invoice_date')
-                        .prop('disabled', false);
+                        if (dealStatus == 4) {
+                        $('#buyer_city,#buyer_state,#buyer_country,#buyer_name, #buyer_email, #buyer_country_id, #buyer_state_id, #buyer_city_id, #buyer_address, #buyer_zipcode, #buyer_sale_price, #invoice_number, #invoice_date')
+                        .prop('disabled', false).prop('readonly', true);
+                           $('#buyer_currency,#gst_type').css('pointer-events', 'none');
+                        }else{
+                         $('#buyer_city,#buyer_state,#buyer_country,#buyer_name, #buyer_email, #buyer_country_id, #buyer_state_id, #buyer_city_id, #buyer_address, #buyer_zipcode, #buyer_sale_price, #invoice_number, #invoice_date')
+                        .prop('disabled', false).prop('readonly', false);
+                       $('#buyer_currency,#gst_type').css('pointer-events', 'auto');
+                        }
+                   
                 } else {
                     $('#dealSoldOutDiv').hide();
-                    $('#buyer_name, #buyer_email, #buyer_country_id, #buyer_state_id, #buyer_city_id, #buyer_address, #buyer_zipcode, #buyer_sale_price, #invoice_number, #invoice_date')
-                        .prop('disabled', true);
+                    $('#buyer_city,#buyer_state,#buyer_country,#buyer_name, #buyer_email, #buyer_country_id, #buyer_state_id, #buyer_city_id, #buyer_address, #buyer_zipcode, #buyer_sale_price, #invoice_number, #invoice_date')
+                        .prop('disabled', true).prop('readonly', false);
+                      $('#buyer_currency,#gst_type').css('pointer-events', 'none');
                 }
             }
 

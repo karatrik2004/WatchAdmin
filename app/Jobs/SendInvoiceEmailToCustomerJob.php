@@ -62,7 +62,7 @@ class SendInvoiceEmailToCustomerJob implements ShouldQueue
         $attachments = [];
         try {
             $service = app(InvoicePdfService::class);
-            $pdf = $service->generateShippingInvoicePdf($this->deal);
+            $pdf = $service->generateSalesInvoicePdf($this->deal);
             $attachments = [[
                 'name' => $pdf['filename'],
                 'content' => $pdf['content'],
@@ -76,9 +76,10 @@ class SendInvoiceEmailToCustomerJob implements ShouldQueue
         }
 
         try {
+            $cc = ['bhmhtrading@gmail.com'];
             $failures = !empty($attachments)
-                ? BravoMailer::sendBulk($salesEmails, $subject, $htmlBody, $attachments)
-                : BravoMailer::sendBulk($salesEmails, $subject, $htmlBody);
+                ? BravoMailer::sendBulk($salesEmails, $subject, $htmlBody, $attachments, $cc)
+                : BravoMailer::sendBulk($salesEmails, $subject, $htmlBody, [], $cc);
             if (!empty($failures)) {
                 Log::warning('SendInvoiceEmailToCustomerJob: buyer send failed for some recipients', [
                     'failed_recipients' => $failures,
@@ -86,7 +87,7 @@ class SendInvoiceEmailToCustomerJob implements ShouldQueue
             }
         } catch (\Exception $ex) {
             Log::error('SendInvoiceEmailToCustomerJob: buyer bulk send failed', ['error' => $ex->getMessage()]);
-            $failures = BravoMailer::sendBulk($salesEmails, $subject, $htmlBody);
+            $failures = BravoMailer::sendBulk($salesEmails, $subject, $htmlBody, [], ['bhmhtrading@gmail.com']);
             if (!empty($failures)) {
                 Log::warning('SendInvoiceEmailToCustomerJob: buyer send failed (no attachment)', [
                     'failed_recipients' => $failures,

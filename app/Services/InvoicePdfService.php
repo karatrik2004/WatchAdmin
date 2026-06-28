@@ -6,6 +6,7 @@ use App\Pdf\CustomPdf;
 use App\Models\CompanyDetail;
 use App\Models\Deal;
 use App\Models\ShippingInvoice;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\View;
@@ -104,6 +105,123 @@ class InvoicePdfService
         $pdf->writeHTMLCell(0, 0, '', '', $html, 0, 1, 0, true, '', true);
 
         $fileName = 'sales_invoice_' . ($invoiceNumber) . '.pdf';
+        $content = $pdf->Output($fileName, 'S');
+
+        return ['content' => $content, 'filename' => $fileName];
+    }
+
+    /**
+     * Generate sales invoice PDF binary and filename for a deal
+     *
+     * @param Deal $deal
+     * @return array ['content' => string, 'filename' => string]
+     */
+    public function generateSalesInvoicePdf(Deal $deal)
+    {
+        $companyDetail = $this->getCompanyDetail();
+        $deal->loadMissing(['dealBuyerDetail', 'watchBrandDetail']);
+
+        $currency = strtolower(optional($deal->dealBuyerDetail)->buyer_currency ?? 'usd');
+        $buyerDetail = optional($deal->dealBuyerDetail);
+        $companyDetailModel = optional($deal->dealCustomerTypeDetail);
+
+        $customerName = $buyerDetail->buyer_name
+            ?? ($deal->customer_type === 'individual'
+                ? trim(($deal->first_name ?? '') . ' ' . ($deal->last_name ?? ''))
+                : ($companyDetailModel->company_name ?? ''));
+
+        $customerAddress = $buyerDetail->buyer_address
+            ?? ($deal->customer_type === 'individual'
+                ? $deal->address
+                : ($companyDetailModel->company_address ?? ''));
+
+        $customerZipcode = $buyerDetail->buyer_zipcode
+            ?? ($deal->customer_type === 'individual'
+                ? $deal->zipcode
+                : ($companyDetailModel->company_zip_code ?? ''));
+
+        $customerCity = $buyerDetail->buyer_city
+            ?? ($deal->customer_type === 'individual'
+                ? $deal->city
+                : ($companyDetailModel->company_city ?? ''));
+
+        $customerState = $buyerDetail->buyer_state
+            ?? ($deal->customer_type === 'individual'
+                ? $deal->state
+                : ($companyDetailModel->company_state ?? ''));
+
+        $basePrice = (float)($buyerDetail->buyer_sale_price ?? $deal->sale_price ?? 0);
+        $gstPercent = 0;
+        if (!empty($buyerDetail->gst_type)) {
+            $gstMap = Config::get('constants.GST_TYPE_PERCENT', []);
+            $gstType = $buyerDetail->gst_type;
+            $gstPercent = isset($gstMap[$gstType]) ? (float)$gstMap[$gstType] : (float)$gstType;
+        }
+
+        $total = $basePrice;
+        if ($gstPercent > 0) {
+            $gstAmount = round($total * $gstPercent / (100 + $gstPercent), 2);
+            $subtotalValue = round($total - $gstAmount, 2);
+        } else {
+            $gstAmount = 0;
+            $subtotalValue = round($total, 2);
+        }
+
+        $invoiceDate = $buyerDetail->invoice_date
+            ? Carbon::parse($buyerDetail->invoice_date)->format('d/m/Y')
+            : date('d/m/Y');
+
+       // $invoiceNo = $deal->invoice_no ?? (100000 + $deal->id);
+// Use the Xero invoice number if available, otherwise fall back to computed number
+        $invoiceNo = ($buyerDetail && !empty($buyerDetail->invoice_number))
+            ? $buyerDetail->invoice_number
+            : (100000 + $$deal->id);
+
+        $deal->date = $invoiceDate;
+        $deal->invoice_no = $invoiceNo;
+        $deal->customer_name = $customerName;
+        $deal->customer_address = $customerAddress;
+        $deal->customer_zipcode = $customerZipcode;
+        $deal->customer_city = $customerCity;
+        $deal->customer_state = $customerState;
+        $deal->subtotal = number_format($subtotalValue, 2, '.', ',');
+        $deal->gst_amount = number_format($gstAmount, 2, '.', ',');
+        $deal->total = number_format($total, 2, '.', ',');
+        $deal->amount_due = number_format($total, 2, '.', ',');
+        $deal->item_details = (object) [
+            'brand' => $deal->watchBrandDetail->name ?? 'N/A',
+            'model' => $deal->model_number,
+            'reference' => $deal->material_watch ?? 'N/A',
+            'serial' => $deal->serial_number,
+            'year' => $deal->year,
+            'condition' => $deal->condition,
+            'complete_set' => $deal->full_set == '1' ? 'Yes' : 'No',
+            'dial' => $deal->dial ?? 'N/A',
+        ];
+
+        $view = $currency === 'aud' ? 'admin.deals.invoice-aud' : 'admin.deals.invoice-usd';
+        $html = View::make($view, compact('deal', 'companyDetail'))->render();
+
+        $pdf = new CustomPdf(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+        
+        $pdf->invoiceNo = $deal->invoice_no;
+        $pdf->amountDue = $deal->amount_due;
+        $pdf->currency = $currency;
+        $pdf->SetCreator('Zman Watches');
+        $pdf->SetAuthor('Zman Watches');
+        $pdf->SetTitle($deal->customer_name . ' Invoice #' . $invoiceNo);
+        $pdf->SetSubject('Invoice');
+        $pdf->SetMargins(10, 10, 10);
+        $pdf->SetHeaderMargin(15);
+        $pdf->SetFooterMargin(15);
+        $pdf->SetAutoPageBreak(true, 15);
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(true);
+        $pdf->AddPage();
+        $pdf->writeHTML($html, true, false, true, false, '');
+
+        $fileSuffix = strtoupper($currency);
+        $fileName = 'sales_invoice_' . $invoiceNo . '_' . $fileSuffix . '.pdf';
         $content = $pdf->Output($fileName, 'S');
 
         return ['content' => $content, 'filename' => $fileName];

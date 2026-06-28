@@ -458,6 +458,7 @@ class DealController extends Controller
 
     public function update(Request $request, $id)
     {
+        //dd($request->all());
         DB::beginTransaction();
         $deal = Deal::findOrFail($id);
         $existingImagesCount = $deal->images->count();
@@ -494,7 +495,7 @@ class DealController extends Controller
                 ],
                 'deleted_images' => 'nullable|string'
             ];
-            if ($request->deal_status == 3) {
+            if ($request->deal_status == 3 || $request->deal_status == 4) {
                 $rules = array_merge($rules, [
                     'buyer_name' => 'required|string|max:255',
                     'buyer_email' => 'nullable|email|max:255',
@@ -513,7 +514,8 @@ class DealController extends Controller
             $oldBuyerDetail = $deal->dealBuyerDetail ? $deal->dealBuyerDetail->toArray() : null;
             $deal->update($request->all());
             // Buyer details update
-            if ($request->deal_status == 3) {
+            if ($request->deal_status == 3 || $request->deal_status == 4) {
+                
                 $deal->dealBuyerDetail()->updateOrCreate(
                     ['deal_id' => $deal->id],
                     [
@@ -560,7 +562,7 @@ class DealController extends Controller
 
                     // Also persist conversion and P/L on the buyer detail for auditability
                     try {
-                        if ($request->deal_status == 3) {
+                        if ($request->deal_status == 3 || $request->deal_status == 4) {
                             $deal->dealBuyerDetail()->update([
                                 'buyer_sale_price_purchase_rate' => $rateUsed,
                                 'buyer_sale_price_in_purchase_currency' => $saleInPurchase,
@@ -678,7 +680,7 @@ class DealController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error updating deal: ' . $e->getMessage());
-            return redirect()->back()->with('alert-danger', 'An error occurred while updating the deal. Please try again.')->withInput();
+            return redirect()->back()->with('alert-danger', $e->getMessage())->withInput();
         }
     }
 
@@ -1571,7 +1573,9 @@ class DealController extends Controller
                         ]);
                     }
                     $deal->save();
-                    SendDealUpdatedNotificationJob::dispatch($deal);
+                    if($deal->deal_status == 3 && $deal->dealBuyerDetail) {
+                      SendDealUpdatedNotificationJob::dispatch($deal);
+                    }                   
                     
                 } catch (\Exception $ex) {
                     \Log::error('Xero sales invoice createOrUpdate failed', [
