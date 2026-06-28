@@ -28,6 +28,15 @@ jobs:
           tools: composer
           coverage: none
 
+      - name: Create required directories
+        run: |
+          cp .env.example .env
+          mkdir -p storage/framework/views
+          mkdir -p storage/framework/cache
+          mkdir -p storage/framework/sessions
+          mkdir -p bootstrap/cache
+          chmod -R 775 storage bootstrap/cache
+
       - name: Cache Composer dependencies
         uses: actions/cache@v4.2.3
         with:
@@ -56,6 +65,15 @@ jobs:
           tools: composer
           coverage: none
 
+      - name: Create required directories
+        run: |
+          cp .env.example .env
+          mkdir -p storage/framework/views
+          mkdir -p storage/framework/cache
+          mkdir -p storage/framework/sessions
+          mkdir -p bootstrap/cache
+          chmod -R 775 storage bootstrap/cache
+
       - name: Cache Composer dependencies
         uses: actions/cache@v4.2.3
         with:
@@ -82,6 +100,15 @@ jobs:
           php-version: ${{ env.PHP_VERSION }}
           tools: composer
           coverage: none
+
+      - name: Create required directories
+        run: |
+          cp .env.example .env
+          mkdir -p storage/framework/views
+          mkdir -p storage/framework/cache
+          mkdir -p storage/framework/sessions
+          mkdir -p bootstrap/cache
+          chmod -R 775 storage bootstrap/cache
 
       - name: Composer audit
         run: composer audit
