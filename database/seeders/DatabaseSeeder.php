@@ -19,7 +19,10 @@ class DatabaseSeeder extends Seeder
         User::factory()->create([
             'firstname' => 'Watch',
             'lastname'  => 'Admin',
-			'email'     => 'watchadmin@yopmail.com',
+            'email'     => 'watchadmin@yopmail.com',
         ]);
+
+        // Seed notification emails
+        $this->call(\Database\Seeders\NotificationEmailsTableSeeder::class);
     }
 }

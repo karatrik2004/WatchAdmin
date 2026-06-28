@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Invoice</title>
+</head>
+
+<body style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333; line-height: 1.5;">
+    <p>Dear
+        {{ optional($deal->dealBuyerDetail)->buyer_name ?? ($deal->customer_type === 'individual' ? trim(($deal->first_name ?? '') . ' ' . ($deal->last_name ?? '')) : optional($deal->dealCustomerTypeDetail)->company_name) }},
+    </p>
+
+    <p>Please find your invoice attached. Summary of your purchase:</p>
+
+    <ul>
+
+        <li><strong>Model number:</strong> {{ $deal->model_number ?? '—' }}</li>
+        <li><strong>Serial number:</strong> {{ $deal->serial_number ?? '—' }}</li>
+        <li><strong>Brand:</strong> {{ $deal->watchBrandDetail->name ?? '—' }}</li>
+        <li><strong>Reference number:</strong> {{ $deal->material_watch ?? '—' }}</li>
+        <li><strong>Condition:</strong> {{ strip_tags((string) ($deal->condition ?? '—')) }}</li>
+        @if(!empty($deal->year))
+            <li><strong>Year:</strong> {{ $deal->year }}</li>
+        @endif
+        <li><strong>Dial:</strong> {{ $deal->dial ?? 'N/A' }}</li>
+        <li><strong>Full set:</strong> {{ $deal->full_set == '1' ? 'Yes' : 'No' }}</li>
+        <li><strong>Customer type:</strong> {{ $deal->customer_type ?? '—' }}</li>
+        <li><strong>Sale price:</strong> {{ strtoupper(optional($deal->dealBuyerDetail)->buyer_currency ?? 'AUD') }}
+            {{ optional($deal->dealBuyerDetail)->buyer_sale_price ?? '—' }}
+        </li>
+        <li><strong>GST:</strong>
+            {{ config('constants.GST_TYPE.' . optional($deal->dealBuyerDetail)->gst_type) ?? '—' }}</li>
+        <li><strong>Status:</strong> {{ config('constants.DEAL_STATUS.' . $deal->deal_status, $deal->deal_status) }}
+        </li>
+        @if(optional($deal->dealBuyerDetail)->invoice_number)
+            <li><strong>Invoice number:</strong> {{ $deal->dealBuyerDetail->invoice_number }}</li>
+        @endif
+        @if(optional($deal->dealBuyerDetail)->invoice_date)
+            <li><strong>Invoice date:</strong>
+                {{ \Carbon\Carbon::parse($deal->dealBuyerDetail->invoice_date)->format('d/m/Y') }}</li>
+        @endif
+    </ul>
+
+    @if($deal->dealBuyerDetail)
+        <p><strong>Bill to / delivery details</strong></p>
+        <ul>
+            <li><strong>Name:</strong> {{ $deal->dealBuyerDetail->buyer_name }}</li>
+            @if(!empty($deal->dealBuyerDetail->buyer_email))
+                <li><strong>Email:</strong> {{ $deal->dealBuyerDetail->buyer_email }}</li>
+            @endif
+            <li><strong>Country:</strong> {{ $deal->dealBuyerDetail->buyer_country ?? '—' }}</li>
+            <li><strong>State:</strong> {{ $deal->dealBuyerDetail->buyer_state ?? '—' }}</li>
+            <li><strong>City:</strong> {{ $deal->dealBuyerDetail->buyer_city ?? '—' }}</li>
+            <li><strong>Address:</strong> {{ $deal->dealBuyerDetail->buyer_address ?? '—' }}</li>
+            <li><strong>Postcode:</strong> {{ $deal->dealBuyerDetail->buyer_zipcode ?? '—' }}</li>
+        </ul>
+    @endif
+
+    <p>If you have any questions, please reply to this email.</p>
+
+    <p>Kind regards,<br>{{ config('app.name', 'Zman Watches') }}</p>
+</body>
+
+</html>

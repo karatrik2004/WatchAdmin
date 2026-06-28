@@ -47,7 +47,7 @@ class AdminController extends Controller
     //loginProcess for login check
     public function loginProcess(Request $request)
     {
-        $input = $request->all();       
+        $input = $request->all();
         $validator = validator::make($request->all(), [
             'email' => ['required', 'string', 'email', 'max:255'],
             'password' => ['required']
@@ -67,19 +67,29 @@ class AdminController extends Controller
             return redirect()->route('admin.login')->withErrors($validator)->withInput();
         } else {
             //check authentication of uname and password
-            $userInfo = array("email" => $input['email'], "password" => $input['password'], 'role_id' => '10');
+            $userInfo = array("email" => $input['email'], "password" => $input['password']);
+
             if (Auth::guard('admin')->attempt($userInfo, $remember_me)) {
                 $user = Auth::guard('admin')->user();
-                $return_url = (isset($input['return_url']) && !empty($input['return_url'])) ? $input['return_url'] : route('admin.dashboard');
-                if ($user->status == 1) {
-                    return redirect($return_url);
-                } else {                    
+
+                if ($user->status != 1) {
                     Auth::guard('admin')->logout();
                     return redirect()->route('admin.login')->with('alert-error', "Your account has been deactivated.")->withInput();
                 }
-            } else {
-                return redirect()->route('admin.login')->with('alert-error', "Email or password is incorrect.")->withInput();
+
+                // Redirect based on role
+                if ($user->role_id == 1) {
+                    return redirect()->route('admin.dashboard'); // Super Admin Dashboard
+                } elseif ($user->role_id == 2) {
+                    return redirect()->route('admin.dashboard'); // Account Role Dashboard
+                } else {
+                    Auth::guard('admin')->logout();
+                    return redirect()->route('admin.login')->with('alert-error', "Unauthorized role.")->withInput();
+                }
             }
+
+            return redirect()->route('admin.login')->with('alert-error', "Email or password is incorrect.")->withInput();
+
         }
     }
 

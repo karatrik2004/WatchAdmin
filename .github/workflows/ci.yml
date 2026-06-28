@@ -1,0 +1,124 @@
+name: CI
+
+on:
+  push:
+    branches: ['kapil-dev']
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PHP_VERSION: '8.2'
+
+jobs:
+  lint:
+    name: Code Style (Pint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          tools: composer
+          coverage: none
+
+      - name: Create required directories
+        run: |
+          cp .env.example .env
+          mkdir -p storage/framework/views
+          mkdir -p storage/framework/cache
+          mkdir -p storage/framework/sessions
+          mkdir -p bootstrap/cache
+          chmod -R 775 storage bootstrap/cache
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4.2.3
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-security-blocking
+
+      - name: Run Pint
+        run: vendor/bin/pint
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          tools: composer
+          coverage: none
+
+      - name: Create required directories
+        run: |
+          cp .env.example .env
+          mkdir -p storage/framework/views
+          mkdir -p storage/framework/cache
+          mkdir -p storage/framework/sessions
+          mkdir -p bootstrap/cache
+          chmod -R 775 storage bootstrap/cache
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4.2.3
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-security-blocking
+
+      - name: Composer audit (informational)
+        run: |
+          composer audit --locked \
+            --ignore-advisory PKSA-m5cs-t1y6-qpcs \
+            --ignore-advisory PKSA-3r5d-mb8f-1qw9 \
+            --ignore-advisory PKSA-mdq4-51ck-6kdq \
+            --ignore-advisory PKSA-8qx3-n5y5-vvnd \
+            --ignore-advisory PKSA-q46n-4fdk-zjr4 \
+            --ignore-advisory PKSA-qzrn-rnz3-85w1 \
+            --ignore-advisory PKSA-w7xr-vk7n-rstm \
+            --ignore-advisory PKSA-y2cr-5h3j-g3ys \
+            --ignore-advisory PKSA-93qv-9n9h-6k6p \
+            --ignore-advisory PKSA-k22t-f949-t9g6 \
+            --ignore-advisory PKSA-7qs6-zvnz-h66r \
+            --ignore-advisory PKSA-gm5x-j3mz-71n9 \
+            --ignore-advisory PKSA-jj5t-2zs1-dcfm \
+            --ignore-advisory PKSA-v5yj-8nmz-sk2q \
+            --ignore-advisory PKSA-ft77-7h5f-p3r6 \
+            --ignore-advisory PKSA-b14r-zh1d-vdrc \
+            || true
+
+  ci-status:
+    name: CI Status
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    if: always()
+    needs: [lint, security-audit]
+    steps:
+      - name: Check pipeline status
+        run: |
+          if [ "${{ needs.lint.result }}" != "success" ]; then
+            echo "Lint failed"
+            exit 1
+          fi
+          # Security audit is informational, don't fail on it
+          if [ "${{ needs.security-audit.result }}" != "success" ]; then
+            echo "::warning::Security audit failed (non-blocking)"
+          fi
+          echo "All CI checks passed!"

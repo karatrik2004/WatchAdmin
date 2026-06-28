@@ -20,7 +20,14 @@ class Kernel extends HttpKernel
         \App\Http\Middleware\PreventRequestsDuringMaintenance::class,
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
-        \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,       
+        \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+        \App\Http\Middleware\SanitizeInputMiddleware::class,
+        \App\Http\Middleware\ContentSecurityPolicy::class,
+        \App\Http\Middleware\HSTS::class,
+        \App\Http\Middleware\ContentTypeOptions::class,
+        \App\Http\Middleware\XFrameOptions::class,
+        \App\Http\Middleware\XSSProtection::class,
+        \App\Http\Middleware\ReferrerPolicy::class,
     ];
 
     /**
@@ -65,9 +72,9 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
 		'donationstatus' => \App\Http\Middleware\DonationStatus::class,
-		
+        'role' => \App\Http\Middleware\RoleMiddleware::class,
         'admin' => \App\Http\Middleware\Admin::class,
-        'guestAdmin' => \App\Http\Middleware\GuestAdmin::class,        
+        'guestAdmin' => \App\Http\Middleware\GuestAdmin::class,
         'disablepreventback' => \App\Http\Middleware\DisablePreventBack::class,
     ];
 }
