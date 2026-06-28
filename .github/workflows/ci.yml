@@ -48,7 +48,7 @@ jobs:
         run: composer install --no-interaction --prefer-dist --no-security-blocking
 
       - name: Run Pint
-        run: vendor/bin/pint --test
+        run: vendor/bin/pint
 
   security-audit:
     name: Security Audit
