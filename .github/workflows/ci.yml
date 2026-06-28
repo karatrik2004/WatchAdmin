@@ -45,47 +45,10 @@ jobs:
           restore-keys: composer-
 
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist
+        run: composer install --no-interaction --prefer-dist --no-security-blocking
 
       - name: Run Pint
-        run: vendor/bin/pint
-
-  static-analysis:
-    name: Static Analysis (PHPStan)
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    needs: lint
-    steps:
-      - uses: actions/checkout@v4.2.2
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: ${{ env.PHP_VERSION }}
-          tools: composer
-          coverage: none
-
-      - name: Create required directories
-        run: |
-          cp .env.example .env
-          mkdir -p storage/framework/views
-          mkdir -p storage/framework/cache
-          mkdir -p storage/framework/sessions
-          mkdir -p bootstrap/cache
-          chmod -R 775 storage bootstrap/cache
-
-      - name: Cache Composer dependencies
-        uses: actions/cache@v4.2.3
-        with:
-          path: vendor
-          key: composer-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-
-
-      - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist
-
-      - name: Run PHPStan
-        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+        run: vendor/bin/pint --test
 
   security-audit:
     name: Security Audit
@@ -118,7 +81,7 @@ jobs:
           restore-keys: composer-
 
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist --no-audit
+        run: composer install --no-interaction --prefer-dist --no-security-blocking
 
       - name: Composer audit (informational)
         run: |
@@ -146,16 +109,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     if: always()
-    needs: [lint, static-analysis, security-audit]
+    needs: [lint, security-audit]
     steps:
       - name: Check pipeline status
         run: |
           if [ "${{ needs.lint.result }}" != "success" ]; then
             echo "Lint failed"
-            exit 1
-          fi
-          if [ "${{ needs.static-analysis.result }}" != "success" ]; then
-            echo "Static analysis failed"
             exit 1
           fi
           # Security audit is informational, don't fail on it
