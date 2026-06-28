@@ -4,7 +4,7 @@ on:
   push:
     branches: ['kapil-dev']
   pull_request:
-    branches: [main]
+    branches: [main, develop]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -86,51 +86,6 @@ jobs:
       - name: Composer audit
         run: composer audit
 
-    name: Coverage Summary
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    needs: [unit-tests, feature-tests]
-    if: always() && (needs.unit-tests.result == 'success' || needs.feature-tests.result == 'success')
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download unit coverage
-        uses: actions/download-artifact@v4
-        with:
-          name: coverage-unit-xml
-          path: coverage/
-        continue-on-error: true
-
-      - name: Download feature coverage
-        uses: actions/download-artifact@v4
-        with:
-          name: coverage-feature-xml
-          path: coverage/
-        continue-on-error: true
-
-      - name: Coverage summary
-        run: |
-          echo "## Code Coverage Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          for file in coverage/coverage-*.xml; do
-            if [ -f "$file" ]; then
-              SUITE=$(basename "$file" .xml | sed 's/coverage-//')
-              # Extract line coverage from clover XML
-              COVERED=$(grep -oP 'coveredstatements="\K[0-9]+' "$file" | head -1 || echo "0")
-              TOTAL=$(grep -oP 'statements="\K[0-9]+' "$file" | head -1 || echo "0")
-              if [ "$TOTAL" -gt 0 ]; then
-                PCT=$(echo "scale=2; $COVERED * 100 / $TOTAL" | bc)
-                echo "| **${SUITE}** | ${COVERED}/${TOTAL} statements | **${PCT}%** |" >> $GITHUB_STEP_SUMMARY
-              else
-                echo "| **${SUITE}** | No coverage data | - |" >> $GITHUB_STEP_SUMMARY
-              fi
-            fi
-          done
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Download the HTML coverage reports from the workflow artifacts for detailed analysis." >> $GITHUB_STEP_SUMMARY
-
   ci-status:
     name: CI Status
     runs-on: ubuntu-latest
@@ -147,7 +102,6 @@ jobs:
           if [ "${{ needs.static-analysis.result }}" != "success" ]; then
             echo "Static analysis failed"
             exit 1
-          
           fi
           # Security audit is informational, don't fail on it
           if [ "${{ needs.security-audit.result }}" != "success" ]; then
