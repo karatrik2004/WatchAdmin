@@ -4,7 +4,7 @@ on:
   push:
     branches: ['kapil-dev']
   pull_request:
-    branches: [main, develop]
+    branches: [main]
 
 concurrency:
   group: ci-${{ github.ref }}
