@@ -12,6 +12,9 @@ concurrency:
 
 env:
   PHP_VERSION: '8.2'
+  ACTIONS_RUNNER_DEBUG: false
+  # Use Node 24 (suppress Node 20 deprecation warning)
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: false
 
 jobs:
   lint:
