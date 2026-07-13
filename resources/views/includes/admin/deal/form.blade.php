@@ -1,6 +1,6 @@
 <div class="form-group row">
     <div class="col-sm-4">
-        <label class="form-label">Model Number <span class="required">*</span></label>
+        <label class="form-label">Model <span class="required">*</span></label>
         {{ html()->text('model_number')->class('form-control form-control-user required') }}
         @if ($errors->has('model_number'))
             <span class="error" role="alert">{{ $errors->first('model_number') }}</span>

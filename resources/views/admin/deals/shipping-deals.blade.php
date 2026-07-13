@@ -88,6 +88,7 @@
                                         <input type="checkbox" id="select-all-top" class="form-check-input select-all-toggle">
                                     </th>
                                     <th>#</th>
+                                    <th>Watch ID</th>
                                     <th>Invoice No.</th>
                                     <th>Model No.</th>
                                     <th>Serial No.</th>
@@ -108,6 +109,7 @@
                                         <input type="checkbox" name="deal_ids[]" value="{{ $deal->id }}" class="form-check-input deal-checkbox">
                                     </td>
                                     <td>{{ ++$i }}</td>
+                                    <td>{{ $deal->watch_id ?? $deal->id }}</td>
                                     <td>{{ optional($deal->dealBuyerDetail)->invoice_number ?? (100000 + $deal->id) }}</td>
                                     <td>{{ $deal->model_number }}</td>
                                     <td>{{ $deal->serial_number }}</td>

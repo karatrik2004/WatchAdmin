@@ -47,6 +47,23 @@
                             </li>
                         </ul>
                     </li>
+                <!-- Vendors Section -->
+                <li class="pc-item pc-hasmenu {{ isActiveUrl(['admin/vendors*'], 'active pc-trigger') }}">
+                    <a href="javascript:void(0);" class="pc-link">
+                        <span class="pc-micon"><i class="material-icons-two-tone">business</i></span>
+                        <span class="pc-mtext">Vendors</span>
+                        <span class="pc-arrow"><i data-feather="chevron-right"></i></span>
+                    </a>
+                    <ul class="pc-submenu">
+                        <li class="pc-item {{ isActiveUrl('admin/vendors') }}">
+                            <a class="pc-link" href="{{ url('admin/vendors') }}">All Vendors</a>
+                        </li>
+                        <li class="pc-item {{ isActiveUrl('admin/vendors/create') }}">
+                            <a class="pc-link" href="{{ url('admin/vendors/create') }}">Add Vendor</a>
+                        </li>
+                    </ul>
+                </li>
+
                 <!-- Manage Stocks -->
                 <li class="pc-item pc-hasmenu {{ isActiveUrl(['admin/stocks*'], 'active pc-trigger') }}">
                     <a href="javascript:void(0);" class="pc-link">
@@ -68,9 +85,9 @@
                         <span class="pc-arrow"><i data-feather="chevron-right"></i></span>
                     </a>
                     <ul class="pc-submenu">
-                        <li class="pc-item {{ isActiveUrl('admin/shipping-deals', 'active') }}">
+                        {{-- <li class="pc-item {{ isActiveUrl('admin/shipping-deals', 'active') }}">
                             <a class="pc-link" href="{{ url('admin/shipping-deals') }}">Shipping Deals</a>
-                        </li>
+                        </li> --}}
                         <li class="pc-item {{ isActiveUrl('admin/shipping-invoices', 'active') }}">
                             <a class="pc-link" href="{{ url('admin/shipping-invoices') }}">Invoices</a>
                         </li>

@@ -183,6 +183,7 @@
                         <thead>
                         <tr>
                             <th>#</th>
+                            <th>Watch ID</th>
                             <th>Model No.</th>
                             <th>Serial No.</th>
                             <th>Year</th>
@@ -207,6 +208,7 @@
                                 @endphp
                                 <tr class="{{ $reviewRowClass }}">
                                     <td>{{ ++$i }}</td>
+                                    <td>{{ $deal->watch_id ?? $deal->id }}</td>
                                     <td>{{ $deal->model_number }}</td>
                                     <td>{{ $deal->serial_number }}</td>
                                     <td>{{ $deal->year }}</td>

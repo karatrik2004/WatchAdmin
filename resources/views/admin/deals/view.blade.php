@@ -183,7 +183,15 @@
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <div class="d-flex align-items-center mb-2">
-                                            <div class="flex-shrink-0 w-50"><span class="form-label">Model Number:</span>
+                                            <div class="flex-shrink-0 w-50"><span class="form-label">Watch ID:</span>
+                                            </div>
+                                            <div class="flex-grow-1"><span
+                                                    class="value-box">{{ $deal->watch_id ?? $deal->id }}</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <div class="flex-shrink-0 w-50"><span class="form-label"></span>Model:</span>
                                             </div>
                                             <div class="flex-grow-1"><span
                                                     class="value-box">{{ $deal->model_number }}</span></div>

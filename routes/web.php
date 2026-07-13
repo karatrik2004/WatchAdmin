@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DealController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\BrandController;
+use App\Http\Controllers\Admin\VendorController;
 
 /*
 
@@ -112,6 +113,7 @@ Route::group(['middleware' => 'disablepreventback'], function () {
 
             Route::resource('stocks', StockController::class);
             Route::resource('brands', BrandController::class);
+            Route::resource('vendors', VendorController::class);
 
 // Show the approve deal modal (GET)
             Route::get('deals/{deal}/approve-modal', [DealController::class, 'loadApproveDealModal'])

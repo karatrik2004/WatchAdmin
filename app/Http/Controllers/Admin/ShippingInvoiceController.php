@@ -51,7 +51,7 @@ class ShippingInvoiceController extends Controller
         $limit  = min(100, max(1, (int) $request->get('limit', 20)));
 
         $query = Deal::with(['watchBrandDetail', 'dealBuyerDetail'])
-            ->where('deal_status', 3)
+            ->whereIn('deal_status',['3','4'])
             ->where('status', 1);
 
         if ($term !== '') {

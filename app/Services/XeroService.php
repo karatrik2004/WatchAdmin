@@ -1016,14 +1016,32 @@ class XeroService
                 $contact->setContactPersons($contactPersons);
             }
 
-            $updateResponse = $api->updateContact($this->tenantId, $contact->getContactId(), $contact);
-            $updatedContacts = $updateResponse->getContacts();
-            $updatedContact = $updatedContacts[0];
-            return [
-                'contact_id' => $updatedContact->getContactId(),
-                'name' => $updatedContact->getName(),
-                'email_address' => $updatedContact->getEmailAddress(),
-            ];
+            try {
+                $updateResponse = $api->updateContact($this->tenantId, $contact->getContactId(), $contact);
+                $updatedContacts = $updateResponse->getContacts();
+                $updatedContact = $updatedContacts[0];
+                return [
+                    'contact_id' => $updatedContact->getContactId(),
+                    'name' => $updatedContact->getName(),
+                    'email_address' => $updatedContact->getEmailAddress(),
+                ];
+            } catch (\Throwable $e) {
+                if ($this->isXeroAuthorisationException($e)) {
+                    \Log::warning('Xero contact update skipped due to authorization scope', [
+                        'contact_id' => $contact->getContactId(),
+                        'contact_name' => $contact->getName(),
+                        'message' => $e->getMessage(),
+                    ]);
+
+                    return [
+                        'contact_id' => $contact->getContactId(),
+                        'name' => $contact->getName(),
+                        'email_address' => $contact->getEmailAddress(),
+                    ];
+                }
+
+                throw $e;
+            }
         } else {
             // Create new contact and return contact_id
             $contact = new Contact();
@@ -1074,6 +1092,16 @@ class XeroService
                 'email_address' => $contact->getEmailAddress(),
             ];
         }
+    }
+
+    private function isXeroAuthorisationException(\Throwable $e): bool
+    {
+        $message = strtolower($e->getMessage());
+
+        return strpos($message, 'authorisationexception') !== false
+            || strpos($message, 'forbidden') !== false
+            || strpos($message, '403') !== false
+            || strpos($message, 'unauthorized') !== false;
     }
 
     /**
@@ -1841,7 +1869,7 @@ class XeroService
      * @param array{invoice_date?: string|null, invoice_number?: string|null} $invoiceMeta Optional: buyer invoice_date drives issue/due dates; invoice_number sent when date is set
      * @return array
      */
-    public function createOrUpdateInvoice(string $contactId, array $lineItemsData, ?string $invoiceId = null, array $invoiceMeta = []): array
+    public function createOrUpdateInvoiceBK(string $contactId, array $lineItemsData, ?string $invoiceId = null, array $invoiceMeta = []): array
     {
         $api = $this->getAccountingApi();
         $defaultSalesAccount = '4-0510'; // Typical Xero sales/revenue account
@@ -2011,12 +2039,14 @@ class XeroService
                 if ($existingContactId && count($existingLineItems) > 0) {
                     $existingIsValid = true;
                 }
-            } else {
+            } 
+            else {
                 \Log::warning('Xero sales invoice not Invoice instance', [
                     'existing_invoice_id' => $invoiceId,
                     'raw_invoice' => json_encode($existing)
                 ]);
             }
+            
             if (!$existingIsValid) {
                 \Log::info('Xero sales invoice invalid for update, creating new invoice', [
                     'existing_invoice_id' => $invoiceId,
@@ -2073,6 +2103,7 @@ class XeroService
                     'line_items' => $lineItemsArr,
                 ];
             }
+
             $normalizeLineItems = function($arr) use ($defaultTaxType, $taxRatesMap, $validXeroTaxTypes) {
                 $labelMap = [
                     'GST_FREE' => 'GST FREE INCOME',
@@ -2192,7 +2223,8 @@ class XeroService
                     'due_date' => ($updatedInvoice->getDueDate() ? $updatedInvoice->getDueDateAsDate()->format('Y-m-d') : null),
                     'line_items' => $lineItemsArr,
                 ];
-            } else if ($existing instanceof Invoice && $existingStatus !== Invoice::STATUS_DRAFT && ($contactChanged || $lineItemsChanged)) {
+            }
+            else if ($existing instanceof Invoice && $existingStatus !== Invoice::STATUS_DRAFT && ($contactChanged || $lineItemsChanged)) {
                 // Void and recreate for AUTHORISED or other statuses
                 $voided = false;
                 $voidError = null;
@@ -2251,7 +2283,8 @@ class XeroService
                     'due_date' => ($createdInvoice->getDueDate() ? $createdInvoice->getDueDateAsDate()->format('Y-m-d') : null),
                     'line_items' => $lineItemsArr,
                 ];
-            } else {
+            } 
+            else {
                 $lineItemsArr = array_map(function($item) {
                     return [
                         'description' => $item['description'],
@@ -2273,7 +2306,8 @@ class XeroService
                     'line_items' => $lineItemsArr,
                 ];
             }
-        } catch (\Exception $ex) {
+        } 
+        catch (\Exception $ex) {
             \Log::error('Xero sales invoice update/void exception', [
                 'exception_message' => $ex->getMessage(),
                 'invoiceId' => $invoiceId,
@@ -2282,6 +2316,337 @@ class XeroService
             ]);
             throw new \Exception('Xero API exception (update/void): ' . $ex->getMessage());
         }
+    }
+
+
+
+    public function createOrUpdateInvoice(string $contactId, array $lineItemsData, ?string $invoiceId = null, array $invoiceMeta = []): array
+    {
+       
+        $api = $this->getAccountingApi();
+        $defaultSalesAccount = '4-0510'; // Typical Xero sales/revenue account
+        $defaultTaxType = 'OUTPUT';
+        $gstTypePercent = config('constants.GST_TYPE_PERCENT');
+    
+        // Build a mapping of tenant TaxRate Name/TaxType -> TaxType code
+        $taxRatesMap = [];
+        try {
+            $taxRates = $this->getTaxRates();
+            foreach ($taxRates as $tr) {
+                $name = strtoupper(trim((string)$tr->getName()));
+                $type = strtoupper(trim((string)$tr->getTaxType()));
+                if ($name !== '') {
+                    $taxRatesMap[$name] = $type;
+                }
+                if ($type !== '') {
+                    $taxRatesMap[$type] = $type;
+                }
+            }
+        } catch (\Exception $ex) {
+            \Log::warning('Failed to fetch Xero tax rates for mapping', ['message' => $ex->getMessage()]);
+        }
+    
+        $validXeroTaxTypes = ['NONE', 'INPUT', 'OUTPUT', 'WOS', 'EXEMPTEXPENSES', 'TAX001'];
+    
+        $lineItems = array_map(function ($item) use ($defaultSalesAccount, $defaultTaxType, $gstTypePercent, $taxRatesMap, $validXeroTaxTypes) {
+            $lineItem = new LineItem();
+            $lineItem->setDescription($item['description'] ?? 'No description');
+            $lineItem->setQuantity($item['quantity'] ?? 1);
+            $lineItem->setUnitAmount($item['unit_amount'] ?? 0);
+            $lineItem->setAccountCode($item['account_code'] ?? $defaultSalesAccount);
+    
+            $taxType = $defaultTaxType;
+            if (!empty($item['gst_type'])) {
+                $rawGst = strtoupper(trim((string)$item['gst_type']));
+                $labelMap = [
+                    'GST_FREE' => 'GST FREE INCOME',
+                    'GST_ON_SALES' => 'GST ON INCOME',
+                ];
+                $key = $labelMap[$rawGst] ?? $rawGst;
+                $key = strtoupper($key);
+                if (isset($taxRatesMap[$key])) {
+                    $taxType = $taxRatesMap[$key];
+                } elseif (in_array($key, $validXeroTaxTypes, true)) {
+                    $taxType = $key;
+                }
+            } elseif (!empty($item['tax_type'])) {
+                $cand = strtoupper(trim((string)$item['tax_type']));
+                if (in_array($cand, $validXeroTaxTypes, true)) {
+                    $taxType = $cand;
+                }
+            }
+    
+            $lineItem->setTaxType($taxType);
+            $lineItem->setDiscountRate(0);
+            return $lineItem;
+        }, $lineItemsData);
+    
+        // CASE 1: Deal creation (no invoiceId) - always create new invoice
+        if (!$invoiceId) {
+            return $this->createNewSalesInvoice($api, $contactId, $lineItems, $invoiceMeta, $lineItemsData, Invoice::STATUS_DRAFT);
+        }
+    
+        // CASE 2: Deal edit (invoiceId provided) - update ONLY if invoice is DRAFT
+        try {
+           
+            $existing = $api->getInvoice($this->tenantId, $invoiceId);
+            //dd($existing);
+            if ($existing instanceof \XeroAPI\XeroPHP\Models\Accounting\Invoices) {
+                $invoicesArr = $existing->getInvoices();
+                $existing = $invoicesArr[0] ?? null;
+            }
+    
+            if (!($existing instanceof Invoice)) {
+                \Log::warning('Xero sales invoice not found / not Invoice instance', [
+                    'existing_invoice_id' => $invoiceId,
+                ]);
+                throw new \Exception('Existing Xero invoice could not be found or read.');
+            }
+    
+            $existingStatus = $existing->getStatus();
+            
+    
+            // --- Only DRAFT invoices are allowed to be updated ---
+            if ($existingStatus !== Invoice::STATUS_DRAFT) {
+                \Log::info('Xero sales invoice is not in DRAFT status, skipping update (no void/recreate performed)', [
+                    'existing_invoice_id' => $invoiceId,
+                    'existing_status' => $existingStatus,
+                ]);
+    
+                $lineItemsArr = array_map(function ($item) {
+                    return [
+                        'description' => $item->getDescription(),
+                        'quantity' => $item->getQuantity(),
+                        'unit_amount' => $item->getUnitAmount(),
+                        'account_code' => $item->getAccountCode(),
+                        'discount' => method_exists($item, 'getDiscountRate') ? $item->getDiscountRate() : null,
+                    ];
+                }, $existing->getLineItems() ?? []);
+                
+                throw new \Exception("Invoice is not in DRAFT status (current status: {$existingStatus}) and was not modified.");
+               
+                return [
+                    'invoice_id' => $existing->getInvoiceId(),
+                    'invoice_number' => $existing->getInvoiceNumber(),
+                    'status' => $existing->getStatus(),
+                    'amount_due' => $existing->getAmountDue(),
+                    'total' => $existing->getTotal(),
+                    'date' => ($existing->getDate() ? $existing->getDateAsDate()->format('Y-m-d') : null),
+                    'due_date' => ($existing->getDueDate() ? $existing->getDueDateAsDate()->format('Y-m-d') : null),
+                    'line_items' => $lineItemsArr,
+                    'message' => "Invoice is not in DRAFT status (current status: {$existingStatus}) and was not modified.",
+                ];
+                
+               
+            }
+    
+            // --- Existing is DRAFT: check if contact / line items actually changed ---
+            $existingLineItems = [];
+            foreach ($existing->getLineItems() ?? [] as $item) {
+                $existingLineItems[] = [
+                    'description' => trim((string)$item->getDescription()),
+                    'quantity' => (float)$item->getQuantity(),
+                    'unit_amount' => round((float)$item->getUnitAmount(), 4),
+                    'account_code' => trim((string)$item->getAccountCode()),
+                    'discount' => method_exists($item, 'getDiscountRate') ? (float)$item->getDiscountRate() : null,
+                ];
+            }
+            $existingContactId = $existing->getContact()?->getContactId();
+    
+            $normalizeLineItems = function ($arr) use ($defaultTaxType, $taxRatesMap, $validXeroTaxTypes) {
+                $labelMap = [
+                    'GST_FREE' => 'GST FREE INCOME',
+                    'GST_ON_SALES' => 'GST ON INCOME',
+                ];
+                $norm = array_map(function ($li) use ($defaultTaxType, $taxRatesMap, $validXeroTaxTypes, $labelMap) {
+                    $desc = is_array($li) ? ($li['description'] ?? '') : ($li->getDescription() ?? '');
+                    $qty = is_array($li) ? ($li['quantity'] ?? 0) : ($li->getQuantity() ?? 0);
+                    $unit = is_array($li) ? ($li['unit_amount'] ?? 0) : ($li->getUnitAmount() ?? 0);
+                    $acc = is_array($li) ? ($li['account_code'] ?? '') : ($li->getAccountCode() ?? '');
+                    $discount = is_array($li)
+                        ? (isset($li['discount']) ? (float)$li['discount'] : null)
+                        : (method_exists($li, 'getDiscountRate') ? (float)$li->getDiscountRate() : null);
+    
+                    $tax = $defaultTaxType;
+                    if (is_array($li)) {
+                        if (!empty($li['gst_type'])) {
+                            $raw = strtoupper(trim((string)$li['gst_type']));
+                            $key = strtoupper($labelMap[$raw] ?? $raw);
+                            if (isset($taxRatesMap[$key])) {
+                                $tax = $taxRatesMap[$key];
+                            } elseif (in_array($key, $validXeroTaxTypes, true)) {
+                                $tax = $key;
+                            }
+                        } elseif (!empty($li['tax_type'])) {
+                            $cand = strtoupper(trim((string)$li['tax_type']));
+                            if (in_array($cand, $validXeroTaxTypes, true)) {
+                                $tax = $cand;
+                            }
+                        }
+                    } else {
+                        $tax = method_exists($li, 'getTaxType') ? trim((string)$li->getTaxType()) : $defaultTaxType;
+                    }
+    
+                    return [
+                        'description' => trim((string)$desc),
+                        'quantity' => (float)$qty,
+                        'unit_amount' => round((float)$unit, 4),
+                        'account_code' => trim((string)$acc),
+                        'discount' => $discount,
+                        'tax_type' => $tax,
+                    ];
+                }, $arr);
+    
+                usort($norm, function ($a, $b) {
+                    return strcmp(
+                        $a['description'] . $a['account_code'] . ($a['tax_type'] ?? ''),
+                        $b['description'] . $b['account_code'] . ($b['tax_type'] ?? '')
+                    );
+                });
+                return $norm;
+            };
+    
+            $normExisting = $normalizeLineItems($existingLineItems);
+            $normNew = $normalizeLineItems($lineItemsData);
+    
+            $contactChanged = (trim((string)($existingContactId ?? '')) !== trim((string)$contactId));
+            $lineItemsChanged = $normExisting !== $normNew;
+    
+            if (!$contactChanged && !$lineItemsChanged) {
+                // Nothing changed - return existing as-is
+                $lineItemsArr = array_map(function ($item) {
+                    return [
+                        'description' => $item['description'],
+                        'quantity' => $item['quantity'],
+                        'unit_amount' => $item['unit_amount'],
+                        'account_code' => $item['account_code'],
+                        'discount' => $item['discount'] ?? null,
+                    ];
+                }, $existingLineItems);
+    
+                \Log::info('Xero sales invoice unchanged, returning existing invoice', $lineItemsArr);
+    
+                return [
+                    'invoice_id' => $existing->getInvoiceId(),
+                    'invoice_number' => $existing->getInvoiceNumber(),
+                    'status' => $existing->getStatus(),
+                    'amount_due' => $existing->getAmountDue(),
+                    'total' => $existing->getTotal(),
+                    'date' => ($existing->getDate() ? $existing->getDateAsDate()->format('Y-m-d') : null),
+                    'due_date' => ($existing->getDueDate() ? $existing->getDueDateAsDate()->format('Y-m-d') : null),
+                    'line_items' => $lineItemsArr,
+                ];
+            }
+    
+            // DRAFT + changed -> straightforward update, no void involved
+            $existing->setContact((new Contact())->setContactId($contactId));
+            $existing->setLineItems($lineItems);
+            $this->applySalesInvoiceLineAmountTypes($existing);
+            $this->applyInvoiceMetaToInvoice($existing, $invoiceMeta);
+            $existing->setStatus(Invoice::STATUS_DRAFT);
+    
+            $response = $api->updateInvoice($this->tenantId, $invoiceId, $existing);
+            $updatedInvoice = $response;
+            if ($updatedInvoice instanceof \XeroAPI\XeroPHP\Models\Accounting\Invoices) {
+                $updatedInvoice = $updatedInvoice->getInvoices()[0] ?? null;
+            }
+            if (!$updatedInvoice) {
+                throw new \Exception('No invoice returned from Xero after update.');
+            }
+    
+            $lineItemsArr = array_map(function ($item) {
+                return [
+                    'description' => $item->getDescription(),
+                    'quantity' => $item->getQuantity(),
+                    'unit_amount' => $item->getUnitAmount(),
+                    'account_code' => $item->getAccountCode(),
+                    'discount' => method_exists($item, 'getDiscountRate') ? $item->getDiscountRate() : null,
+                ];
+            }, $updatedInvoice->getLineItems() ?? []);
+    
+            \Log::info('Xero sales invoice updated line items', $lineItemsArr);
+    
+            return [
+                'invoice_id' => $updatedInvoice->getInvoiceId(),
+                'invoice_number' => $updatedInvoice->getInvoiceNumber(),
+                'status' => $updatedInvoice->getStatus(),
+                'amount_due' => $updatedInvoice->getAmountDue(),
+                'total' => $updatedInvoice->getTotal(),
+                'date' => ($updatedInvoice->getDate() ? $updatedInvoice->getDateAsDate()->format('Y-m-d') : null),
+                'due_date' => ($updatedInvoice->getDueDate() ? $updatedInvoice->getDueDateAsDate()->format('Y-m-d') : null),
+                'line_items' => $lineItemsArr,
+            ];
+        } catch (\Exception $ex) {
+            \Log::error('Xero sales invoice update exception', [
+                'exception_message' => $ex->getMessage(),
+                'invoiceId' => $invoiceId,
+                'contactId' => $contactId,
+                'lineItemsData' => $lineItemsData,
+            ]);
+            throw new \Exception('Xero API exception (update): ' . $ex->getMessage());
+        }
+
+    }
+
+    /**
+     * Helper: create a fresh Xero sales invoice (used for CASE 1 only now).
+     */
+    private function createNewSalesInvoice($api, string $contactId, array $lineItems, array $invoiceMeta, array $lineItemsData, string $status): array
+    {
+        $invoice = new Invoice();
+        $invoice->setType(Invoice::TYPE_ACCREC);
+        $invoice->setContact((new Contact())->setContactId($contactId));
+        $invoice->setLineItems($lineItems);
+        $this->applySalesInvoiceLineAmountTypes($invoice);
+        $this->applyInvoiceMetaToInvoice($invoice, $invoiceMeta);
+        $invoice->setStatus($status);
+    
+        $invoices = new Invoices();
+        $invoices->setInvoices([$invoice]);
+    
+        try {
+            $response = $api->createInvoices($this->tenantId, $invoices);
+            $invoicesArr = $response->getInvoices();
+        } catch (\Exception $ex) {
+            \Log::error('Xero sales invoice creation exception', [
+                'exception_message' => $ex->getMessage(),
+                'contactId' => $contactId,
+                'lineItemsData' => $lineItemsData,
+            ]);
+            throw new \Exception('Xero API exception: ' . $ex->getMessage());
+        }
+    
+        if (empty($invoicesArr) || $invoicesArr[0]->getInvoiceId() === '00000000-0000-0000-0000-000000000000') {
+            \Log::error('Xero sales invoice creation failed', [
+                'response' => $response,
+                'contactId' => $contactId,
+                'lineItemsData' => $lineItemsData,
+            ]);
+            throw new \Exception('Xero did not create a valid sales invoice. Check API response for errors.');
+        }
+    
+        $createdInvoice = $invoicesArr[0];
+        $lineItemsArr = array_map(function ($item) {
+            return [
+                'description' => $item->getDescription(),
+                'quantity' => $item->getQuantity(),
+                'unit_amount' => $item->getUnitAmount(),
+                'account_code' => $item->getAccountCode(),
+                'discount' => method_exists($item, 'getDiscountRate') ? $item->getDiscountRate() : null,
+            ];
+        }, $createdInvoice->getLineItems() ?? []);
+    
+        return [
+            'invoice_id' => $createdInvoice->getInvoiceId(),
+            'invoice_number' => $createdInvoice->getInvoiceNumber(),
+            'status' => $createdInvoice->getStatus(),
+            'amount_due' => $createdInvoice->getAmountDue(),
+            'total' => $createdInvoice->getTotal(),
+            'date' => ($createdInvoice->getDate() ? $createdInvoice->getDateAsDate()->format('Y-m-d') : null),
+            'due_date' => ($createdInvoice->getDueDate() ? $createdInvoice->getDueDateAsDate()->format('Y-m-d') : null),
+            'line_items' => $lineItemsArr,
+        ];
+   
     }
 
 }

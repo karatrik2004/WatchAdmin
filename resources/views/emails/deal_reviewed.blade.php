@@ -3,7 +3,7 @@
 <ul>
     <li><strong>Deal ID:</strong> {{ $deal->id }}</li>
     <li><strong>Brand:</strong> {{ $deal->watchBrandDetail->name ?? 'N/A' }}</li>
-    <li><strong>Model Number:</strong> {{ $deal->model_number }}</li>
+    <li><strong>Model:</strong> {{ $deal->model_number }}</li>
     <li><strong>Serial Number:</strong> {{ $deal->serial_number }}</li>
     <li><strong>Reference Number:</strong> {{ $deal->material_watch ?? 'N/A' }}</li>
     <li><strong>Dial:</strong> {{ $deal->dial ?? 'N/A' }}</li>

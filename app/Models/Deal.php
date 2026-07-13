@@ -20,7 +20,7 @@ class Deal extends Model
         'model_number', 'serial_number', 'material_watch', 'dial', 'condition', 'year', 'full_set', 'purchase_price', 'sale_price', 'delivery_cost',
         'country', 'state', 'city', 'address', 'zipcode', 'deal_status', 'status', 'brand_id',
         'gst_code', 'deal_supplier_status', 'purchase_invoice_number', 'purchase_invoice_date', 'purchase_currency', 'note',
-        'review_status', 'reviewed_by', 'reviewed_at'
+        'review_status', 'reviewed_by', 'reviewed_at', 'watch_id'
     ];
 
     /**
@@ -39,6 +39,15 @@ class Deal extends Model
         'is_loss' => 'boolean',
         'reviewed_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Deal $deal): void {
+            if (empty($deal->watch_id)) {
+                $deal->watch_id = 'WATCH-' . str_pad((string) $deal->getKey(), 6, '0', STR_PAD_LEFT);
+            }
+        });
+    }
 
     public function dealBuyerDetail()
     {

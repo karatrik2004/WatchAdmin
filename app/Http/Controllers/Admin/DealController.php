@@ -231,6 +231,10 @@ class DealController extends Controller
             $payload['reviewed_by'] = null;
             $payload['reviewed_at'] = null;
             $deal = Deal::create($payload);
+            if (empty($deal->watch_id)) {
+                $deal->watch_id = 'WATCH-' . str_pad((string) $deal->id, 6, '0', STR_PAD_LEFT);
+                $deal->save();
+            }
 
          
 
@@ -668,7 +672,9 @@ class DealController extends Controller
             DB::commit();
             // Dispatch background job to generate invoice after update
             //GenerateInvoiceFromDealJob::dispatch($deal->id);
-            $this->generateInvoiceFromDeal($deal->id);
+             
+             $this->generateInvoiceFromDeal($deal->id);
+               
             // Dispatch job to send deal updated notification only if buyer exists
             if ($deal->dealBuyerDetail) {
                 //SendDealUpdatedNotificationJob::dispatch($deal);
@@ -1514,7 +1520,7 @@ class DealController extends Controller
                 $deal->xero_bill_id = $bill['bill_id'];
                 $deal->save();
             } 
-            else if ($contactType === 'customer') {
+            else if ($contactType === 'customer'  && $deal->deal_status=='3') {
                 $contact = $xero->createCustomer($contactData);
                 $deal->customer_xero_id = $contact['contact_id'];
                 $deal->save();
@@ -1591,7 +1597,8 @@ class DealController extends Controller
             return redirect()
                 ->route('admin.deals.show', $deal->id)
                 ->with('alert-success', $contactType === 'customer' ? 'Xero Invoice created/updated successfully' : 'Xero Bill created successfully');
-        } catch (\Exception $e) {
+        } 
+        catch (\Exception $e) {
             Log::error('Xero Invoice/Bill generation error', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
