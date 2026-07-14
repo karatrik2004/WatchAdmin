@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\DealController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\VendorController;
+use App\Http\Controllers\Admin\CustomerController;
 
 /*
 
@@ -110,10 +111,15 @@ Route::group(['middleware' => 'disablepreventback'], function () {
 
             Route::get('/brand-autocomplete',[DealController::class, 'brandAutocomplete'])->name('deal.brand.autocomplete');
             Route::get('/deal/brand-name', [DealController::class, 'getBrandName'])->name('deal.brand.name');
+            Route::get('/vendor-autocomplete', [DealController::class, 'vendorAutocomplete'])->name('deal.vendor.autocomplete');
+            Route::get('/deal/vendor-details', [DealController::class, 'getVendorDetails'])->name('deal.vendor.details');
+            Route::get('/customer-autocomplete', [DealController::class, 'customerAutocomplete'])->name('deal.customer.autocomplete');
+            Route::get('/deal/customer-details', [DealController::class, 'getCustomerDetails'])->name('deal.customer.details');
 
             Route::resource('stocks', StockController::class);
             Route::resource('brands', BrandController::class);
             Route::resource('vendors', VendorController::class);
+            Route::resource('customers', CustomerController::class);
 
 // Show the approve deal modal (GET)
             Route::get('deals/{deal}/approve-modal', [DealController::class, 'loadApproveDealModal'])

@@ -234,10 +234,12 @@
                         $('#buyer_city,#buyer_state,#buyer_country,#buyer_name, #buyer_email, #buyer_country_id, #buyer_state_id, #buyer_city_id, #buyer_address, #buyer_zipcode, #buyer_sale_price, #invoice_number, #invoice_date')
                         .prop('disabled', false).prop('readonly', true);
                            $('#buyer_currency,#gst_type').css('pointer-events', 'none');
+                           $('#customer_search,#clear_customer_selection').prop('disabled', true);
                         }else{
                          $('#buyer_city,#buyer_state,#buyer_country,#buyer_name, #buyer_email, #buyer_country_id, #buyer_state_id, #buyer_city_id, #buyer_address, #buyer_zipcode, #buyer_sale_price, #invoice_number, #invoice_date')
                         .prop('disabled', false).prop('readonly', false);
                        $('#buyer_currency,#gst_type').css('pointer-events', 'auto');
+                       $('#customer_search,#clear_customer_selection').prop('disabled', false);
                         }
                    
                 } else {
@@ -245,6 +247,7 @@
                     $('#buyer_city,#buyer_state,#buyer_country,#buyer_name, #buyer_email, #buyer_country_id, #buyer_state_id, #buyer_city_id, #buyer_address, #buyer_zipcode, #buyer_sale_price, #invoice_number, #invoice_date')
                         .prop('disabled', true).prop('readonly', false);
                       $('#buyer_currency,#gst_type').css('pointer-events', 'none');
+                      $('#customer_search,#clear_customer_selection').prop('disabled', true);
                 }
             }
 

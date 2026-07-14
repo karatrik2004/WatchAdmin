@@ -162,6 +162,115 @@
             @endif
         </div>
     </div>
+
+    @php
+        $selectedVendor = isset($deal) ? $deal->vendor : null;
+        $selectedVendorName = '';
+        if ($selectedVendor) {
+            $selectedVendorName = $selectedVendor->vendor_type === 'company'
+                ? ($selectedVendor->company_name ?? '')
+                : trim(($selectedVendor->first_name ?? '') . ' ' . ($selectedVendor->last_name ?? ''));
+        }
+    @endphp
+
+    <style>
+        .vendor-suggest-menu {
+            max-height: 280px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            z-index: 2500;
+            margin-top: 6px;
+            padding: 0;
+            list-style: none;
+            border: 1px solid #d8dde6;
+            border-radius: 8px;
+            background: #ffffff;
+            box-shadow: 0 10px 28px rgba(17, 24, 39, 0.12);
+        }
+
+        .vendor-suggest-menu .ui-menu-item {
+            margin: 0;
+            padding: 0;
+            border-bottom: 1px solid #edf1f6;
+        }
+
+        .vendor-suggest-menu .ui-menu-item:last-child {
+            border-bottom: none;
+        }
+
+        .vendor-suggest-menu .ui-menu-item-wrapper {
+            display: block;
+            margin: 0;
+            padding: 10px 12px;
+            border: none;
+            background: #ffffff;
+        }
+
+        .vendor-suggest-name {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #1f2937;
+            line-height: 1.35;
+        }
+
+        .vendor-suggest-meta {
+            display: block;
+            margin-top: 3px;
+            font-size: 12px;
+            color: #6b7280;
+            line-height: 1.35;
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        .vendor-suggest-menu .ui-state-active,
+        .vendor-suggest-menu .ui-menu-item-wrapper.ui-state-active {
+            background: #eef5ff;
+            color: inherit;
+            margin: 0;
+            border: none;
+        }
+
+        .vendor-suggest-menu .ui-state-active .vendor-suggest-name {
+            color: #0a58ca;
+        }
+
+        .vendor-suggest-menu .ui-state-active .vendor-suggest-meta {
+            color: #3b82f6;
+        }
+    </style>
+
+    <div class="form-group row mb-4">
+        <div class="col-sm-12">
+            <div class="p-3 border rounded bg-light-subtle">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                    <label class="form-label mb-0 fw-semibold">Vendor Lookup (Optional)</label>
+                    <button type="button" id="clear_vendor_selection" class="btn btn-outline-secondary btn-sm">Clear Selection</button>
+                </div>
+
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fa fa-search"></i></span>
+                    <input type="text" id="vendor_search" class="form-control" value="{{ old('vendor_search', $selectedVendorName) }}"
+                        placeholder="Search vendor by name, email, contact, ABN">
+                </div>
+
+                <input type="hidden" name="vendor_id" id="vendor_id" value="{{ old('vendor_id', $deal->vendor_id ?? '') }}">
+
+                <div class="d-flex flex-wrap justify-content-between align-items-center mt-2 gap-2">
+                    <small class="text-muted" id="vendor_lookup_hint">Choose a vendor to auto-fill details. You can still edit all fields manually.</small>
+                    <small id="vendor_type_badge" class="badge bg-secondary text-uppercase"></small>
+                </div>
+
+                @if ($errors->has('vendor_id'))
+                    <span class="error d-block mt-1" role="alert">{{ $errors->first('vendor_id') }}</span>
+                @endif
+
+                <div id="vendor_lookup_feedback" class="small mt-2"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Individual Fields -->
     <div id="individual-fields" class="row mt-3">
         <div class="col-sm-4">
@@ -497,6 +606,25 @@
                 <h5 class="mt-3 mb-3">Details of the Buyer</h5>
             </div>
         </div>
+        <div class="form-group row mb-3">
+            <div class="col-sm-12">
+                <div class="p-3 border rounded bg-light-subtle">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                        <label class="form-label mb-0 fw-semibold">Customer Lookup (Optional)</label>
+                        <button type="button" id="clear_customer_selection" class="btn btn-outline-secondary btn-sm">Clear Selection</button>
+                    </div>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fa fa-search"></i></span>
+                        <input type="text" id="customer_search" class="form-control"
+                            value="{{ old('customer_search', optional($deal->customer)->buyer_name) }}"
+                            placeholder="Search customer by name, email, city, country">
+                    </div>
+                    <input type="hidden" name="customer_id" id="customer_id_lookup" value="{{ old('customer_id', $deal->customer_id ?? '') }}">
+                    <small class="text-muted d-block mt-2">Select customer to auto-fill buyer fields below. You can still edit manually.</small>
+                    <div id="customer_lookup_feedback" class="small mt-1"></div>
+                </div>
+            </div>
+        </div>
         <div class="form-group row">
             <div class="col-sm-4">
                 <label class="form-label">Name of Buyer <span class="required">*</span></label>
@@ -528,33 +656,32 @@
                     <span class="error" role="alert">{{ $message }}</span>
                 @enderror
             </div>
-            <div class="form-group row mt-3">
-                <div class="col-sm-4">
-                    <label class="form-label">City <span class="required">*</span></label>
-                    <input type="text" name="buyer_city" id="buyer_city" class="form-control required"
-                        value="{{ old('buyer_city', optional($deal->dealBuyerDetail)->buyer_city) }}">
-                    @error('buyer_city')
-                        <span class="error" role="alert">{{ $message }}</span>
-                    @enderror
-                </div>
+            <div class="col-sm-4 mt-3">
+                <label class="form-label">City <span class="required">*</span></label>
+                <input type="text" name="buyer_city" id="buyer_city" class="form-control required"
+                    value="{{ old('buyer_city', optional($deal->dealBuyerDetail)->buyer_city) }}">
+                @error('buyer_city')
+                    <span class="error" role="alert">{{ $message }}</span>
+                @enderror
+            </div>
 
-                <div class="col-sm-4">
-                    <label class="form-label">State <span class="required">*</span></label>
-                    <input type="text" name="buyer_state" id="buyer_state" class="form-control required"
-                        value="{{ old('buyer_state', optional($deal->dealBuyerDetail)->buyer_state) }}">
-                    @error('buyer_state')
-                        <span class="error" role="alert">{{ $message }}</span>
-                    @enderror
-                </div>
+            <div class="col-sm-4 mt-3">
+                <label class="form-label">State <span class="required">*</span></label>
+                <input type="text" name="buyer_state" id="buyer_state" class="form-control required"
+                    value="{{ old('buyer_state', optional($deal->dealBuyerDetail)->buyer_state) }}">
+                @error('buyer_state')
+                    <span class="error" role="alert">{{ $message }}</span>
+                @enderror
+            </div>
 
-                <div class="col-sm-4">
-                    <label class="form-label">Country <span class="required">*</span></label>
-                    <input type="text" name="buyer_country" id="buyer_country" class="form-control required"
-                        value="{{ old('buyer_country', optional($deal->dealBuyerDetail)->buyer_country) }}">
-                    @error('buyer_country')
-                        <span class="error" role="alert">{{ $message }}</span>
-                    @enderror
-                </div>
+            <div class="col-sm-4 mt-3">
+                <label class="form-label">Country <span class="required">*</span></label>
+                <input type="text" name="buyer_country" id="buyer_country" class="form-control required"
+                    value="{{ old('buyer_country', optional($deal->dealBuyerDetail)->buyer_country) }}">
+                @error('buyer_country')
+                    <span class="error" role="alert">{{ $message }}</span>
+                @enderror
+            </div>
 
                 {{--<div class="col-sm-4">
                     <label class="form-label">City <span class="required">*</span></label>
@@ -586,7 +713,6 @@
                     <span class="error" role="alert">{{ $message }}</span>
                     @enderror
                 </div>--}}
-            </div>
 
 
             <div class="col-sm-4 mt-3">
@@ -830,6 +956,391 @@
             })();
     </script>
 @endif
+
+<script>
+    (function initVendorLookup() {
+        function setup() {
+            if (typeof jQuery === 'undefined' || typeof jQuery.fn.autocomplete === 'undefined') {
+                setTimeout(setup, 100);
+                return;
+            }
+
+            const $vendorSearch = jQuery('#vendor_search');
+            const $vendorId = jQuery('#vendor_id');
+            const $vendorFeedback = jQuery('#vendor_lookup_feedback');
+            const $vendorTypeBadge = jQuery('#vendor_type_badge');
+
+            if (!$vendorSearch.length || !$vendorId.length) {
+                return;
+            }
+
+            function getCustomerType() {
+                return jQuery('input[name="customer_type"]:checked').val() || 'individual';
+            }
+
+            function parseVendorSuggestion(item) {
+                const rawLabel = (item && item.label) ? item.label : '';
+                const separator = ' - ';
+                const separatorIndex = rawLabel.indexOf(separator);
+
+                if (separatorIndex === -1) {
+                    return {
+                        name: rawLabel,
+                        meta: '',
+                    };
+                }
+
+                return {
+                    name: rawLabel.slice(0, separatorIndex),
+                    meta: rawLabel.slice(separatorIndex + separator.length),
+                };
+            }
+
+            function setVendorFeedback(message, state) {
+                $vendorFeedback
+                    .removeClass('text-muted text-success text-danger')
+                    .addClass(state === 'success' ? 'text-success' : (state === 'error' ? 'text-danger' : 'text-muted'))
+                    .text(message || '');
+            }
+
+            function refreshVendorTypeBadge() {
+                const type = getCustomerType();
+                $vendorTypeBadge.text(type);
+            }
+
+            function assignValue(selector, value) {
+                const $el = jQuery(selector);
+                if ($el.length) {
+                    $el.val(value || '');
+                }
+            }
+
+            function applyVendorData(data) {
+                if (!data || !data.vendor_type) {
+                    return;
+                }
+
+                if (data.vendor_type === 'company') {
+                    const company = data.company || {};
+                    assignValue('input[name="company_name"]', company.company_name);
+                    assignValue('input[name="company_email"]', company.company_email);
+                    assignValue('input[name="company_mobile"]', company.company_mobile);
+                    assignValue('input[name="company_address"]', company.company_address);
+                    assignValue('#company_city', company.company_city);
+                    assignValue('#company_state', company.company_state);
+                    assignValue('#company_country', company.company_country);
+                    assignValue('input[name="company_zip_code"]', company.company_zip_code);
+                    assignValue('input[name="abn_number"]', company.abn_number);
+                    assignValue('input[name="director_name"]', company.director_name);
+                    assignValue('input[name="dealer_licence_number"]', company.dealer_licence_number);
+                } else {
+                    const individual = data.individual || {};
+                    assignValue('input[name="first_name"]', individual.first_name);
+                    assignValue('input[name="last_name"]', individual.last_name);
+                    assignValue('input[name="email"]', individual.email);
+                    assignValue('input[name="mobile"]', individual.mobile);
+                    assignValue('input[name="address"]', individual.address);
+                    assignValue('#city', individual.city);
+                    assignValue('#state', individual.state);
+                    assignValue('#country', individual.country);
+                    assignValue('input[name="zipcode"]', individual.zipcode);
+                }
+
+                setVendorFeedback('Vendor details loaded. You can still edit any field.', 'success');
+            }
+
+            function loadVendorDetails(vendorId, applyToForm) {
+                if (!vendorId) {
+                    return;
+                }
+
+                jQuery.ajax({
+                    url: "{{ route('admin.deal.vendor.details') }}",
+                    method: 'GET',
+                    dataType: 'json',
+                    data: {
+                        vendor_id: vendorId,
+                        customer_type: getCustomerType(),
+                    },
+                    success: function (response) {
+                        if (response && response.display_name) {
+                            $vendorSearch.val(response.display_name);
+                        }
+
+                        if (applyToForm) {
+                            applyVendorData(response);
+                        }
+                    },
+                    error: function () {
+                        setVendorFeedback('Unable to load vendor details for selected type.', 'error');
+                    }
+                });
+            }
+
+            function clearVendorSelection(clearSearch) {
+                $vendorId.val('');
+                setVendorFeedback('', 'default');
+                if (clearSearch) {
+                    $vendorSearch.val('');
+                }
+            }
+
+            $vendorSearch.autocomplete({
+                source: function (request, response) {
+                    jQuery.ajax({
+                        url: "{{ route('admin.deal.vendor.autocomplete') }}",
+                        method: 'GET',
+                        dataType: 'json',
+                        data: {
+                            term: request.term,
+                            customer_type: getCustomerType(),
+                        },
+                        success: function (data) {
+                            const items = (data || []).map(function (item) {
+                                const parsed = parseVendorSuggestion(item);
+                                return Object.assign({}, item, {
+                                    name: parsed.name,
+                                    meta: parsed.meta,
+                                });
+                            });
+
+                            response(items);
+                        }
+                    });
+                },
+                minLength: 1,
+                delay: 120,
+                autoFocus: true,
+                focus: function (event, ui) {
+                    $vendorSearch.val(ui.item.name || ui.item.label || '');
+                    return false;
+                },
+                select: function (event, ui) {
+                    $vendorId.val(ui.item.value);
+                    $vendorSearch.val(ui.item.name || ui.item.label || '');
+                    loadVendorDetails(ui.item.value, true);
+                    return false;
+                },
+                change: function (event, ui) {
+                    if (!ui.item && !$vendorSearch.val().trim()) {
+                        clearVendorSelection(false);
+                    }
+                },
+                open: function () {
+                    const $menu = $vendorSearch.autocomplete('widget');
+                    $menu.addClass('vendor-suggest-menu');
+                    $menu.outerWidth($vendorSearch.outerWidth());
+                }
+            });
+
+            $vendorSearch.autocomplete('instance')._renderItem = function (ul, item) {
+                const name = item.name || item.label || '';
+                const meta = item.meta || '';
+                const safeName = jQuery('<div>').text(name).html();
+                const safeMeta = jQuery('<div>').text(meta).html();
+
+                return jQuery('<li>')
+                    .append(
+                        '<div class="ui-menu-item-wrapper">'
+                        + '<span class="vendor-suggest-name">' + safeName + '</span>'
+                        + (safeMeta ? '<div class="vendor-suggest-meta">' + safeMeta + '</div>' : '')
+                        + '</div>'
+                    )
+                    .appendTo(ul);
+            };
+
+            jQuery('#clear_vendor_selection').on('click', function () {
+                clearVendorSelection(true);
+            });
+
+            jQuery('input[name="customer_type"]').on('change', function () {
+                clearVendorSelection(true);
+                refreshVendorTypeBadge();
+            });
+
+            refreshVendorTypeBadge();
+
+            if ($vendorId.val()) {
+                loadVendorDetails($vendorId.val(), false);
+            }
+        }
+
+        setup();
+    })();
+</script>
+
+<script>
+    (function initCustomerLookup() {
+        function setup() {
+            if (typeof jQuery === 'undefined' || typeof jQuery.fn.autocomplete === 'undefined') {
+                setTimeout(setup, 100);
+                return;
+            }
+
+            const $customerSearch = jQuery('#customer_search');
+            const $customerLookupId = jQuery('#customer_id_lookup');
+            const $customerFeedback = jQuery('#customer_lookup_feedback');
+
+            if (!$customerSearch.length) {
+                return;
+            }
+
+            function setCustomerFeedback(message, state) {
+                $customerFeedback
+                    .removeClass('text-muted text-success text-danger')
+                    .addClass(state === 'success' ? 'text-success' : (state === 'error' ? 'text-danger' : 'text-muted'))
+                    .text(message || '');
+            }
+
+            function assignValue(selector, value) {
+                const $el = jQuery(selector);
+                if ($el.length) {
+                    $el.val(value || '');
+                }
+            }
+
+            function parseCustomerSuggestion(item) {
+                const rawLabel = (item && item.label) ? item.label : '';
+                const separator = ' - ';
+                const separatorIndex = rawLabel.indexOf(separator);
+
+                if (separatorIndex === -1) {
+                    return {
+                        name: rawLabel,
+                        meta: '',
+                    };
+                }
+
+                return {
+                    name: rawLabel.slice(0, separatorIndex),
+                    meta: rawLabel.slice(separatorIndex + separator.length),
+                };
+            }
+
+            function applyCustomerData(data) {
+                if (!data || !data.buyer) {
+                    return;
+                }
+
+                const buyer = data.buyer;
+                assignValue('#buyer_name', buyer.buyer_name);
+                assignValue('#buyer_email', buyer.buyer_email);
+                assignValue('input[name="buyer_address"]', buyer.buyer_address);
+                assignValue('#buyer_city', buyer.buyer_city);
+                assignValue('#buyer_state', buyer.buyer_state);
+                assignValue('#buyer_country', buyer.buyer_country);
+                assignValue('input[name="buyer_zipcode"]', buyer.buyer_zipcode);
+
+                setCustomerFeedback('Customer details loaded. You can still edit any buyer field.', 'success');
+            }
+
+            function loadCustomerDetails(customerId) {
+                if (!customerId) {
+                    return;
+                }
+
+                jQuery.ajax({
+                    url: "{{ route('admin.deal.customer.details') }}",
+                    method: 'GET',
+                    dataType: 'json',
+                    data: {
+                        customer_id: customerId,
+                    },
+                    success: function (response) {
+                        if (response && response.display_name) {
+                            $customerSearch.val(response.display_name);
+                        }
+                        applyCustomerData(response);
+                    },
+                    error: function () {
+                        setCustomerFeedback('Unable to load customer details.', 'error');
+                    }
+                });
+            }
+
+            function clearCustomerSelection(clearSearch) {
+                $customerLookupId.val('');
+                if (clearSearch) {
+                    $customerSearch.val('');
+                }
+                setCustomerFeedback('', 'default');
+            }
+
+            $customerSearch.autocomplete({
+                source: function (request, response) {
+                    jQuery.ajax({
+                        url: "{{ route('admin.deal.customer.autocomplete') }}",
+                        method: 'GET',
+                        dataType: 'json',
+                        data: {
+                            term: request.term,
+                        },
+                        success: function (data) {
+                            const items = (data || []).map(function (item) {
+                                const parsed = parseCustomerSuggestion(item);
+                                return Object.assign({}, item, {
+                                    name: parsed.name,
+                                    meta: parsed.meta,
+                                });
+                            });
+
+                            response(items);
+                        }
+                    });
+                },
+                minLength: 1,
+                delay: 120,
+                autoFocus: true,
+                focus: function (event, ui) {
+                    $customerSearch.val(ui.item.name || ui.item.label || '');
+                    return false;
+                },
+                select: function (event, ui) {
+                    $customerLookupId.val(ui.item.value);
+                    $customerSearch.val(ui.item.name || ui.item.label || '');
+                    loadCustomerDetails(ui.item.value);
+                    return false;
+                },
+                change: function (event, ui) {
+                    if (!ui.item && !$customerSearch.val().trim()) {
+                        clearCustomerSelection(false);
+                    }
+                },
+                open: function () {
+                    const $menu = $customerSearch.autocomplete('widget');
+                    $menu.addClass('vendor-suggest-menu');
+                    $menu.outerWidth($customerSearch.outerWidth());
+                }
+            });
+
+            $customerSearch.autocomplete('instance')._renderItem = function (ul, item) {
+                const name = item.name || item.label || '';
+                const meta = item.meta || '';
+                const safeName = jQuery('<div>').text(name).html();
+                const safeMeta = jQuery('<div>').text(meta).html();
+
+                return jQuery('<li>')
+                    .append(
+                        '<div class="ui-menu-item-wrapper">'
+                        + '<span class="vendor-suggest-name">' + safeName + '</span>'
+                        + (safeMeta ? '<div class="vendor-suggest-meta">' + safeMeta + '</div>' : '')
+                        + '</div>'
+                    )
+                    .appendTo(ul);
+            };
+
+            jQuery('#clear_customer_selection').on('click', function () {
+                clearCustomerSelection(true);
+            });
+
+            if ($customerLookupId.val()) {
+                loadCustomerDetails($customerLookupId.val());
+            }
+        }
+
+        setup();
+    })();
+</script>
 
 <script>
     (function waitForValidate() {

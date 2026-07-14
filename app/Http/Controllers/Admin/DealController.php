@@ -19,7 +19,9 @@ use Carbon\Carbon;
 use Illuminate\Support\Str;
 use App\Models\Deal;
 use App\Models\City;
+use App\Models\Customer;
 use Illuminate\Support\Facades\DB;
+use App\Models\Vendor;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -203,9 +205,16 @@ class DealController extends Controller
     {
         DB::beginTransaction(); // Start a transaction
         try {
+            $selectedCustomerId = $request->input('customer_id', $request->input('customer_id_lookup'));
+            $request->merge([
+                'customer_id' => $selectedCustomerId !== '' ? $selectedCustomerId : null,
+            ]);
+
             // 1. Validate request
             $rules = [
                 'customer_type' => 'required',
+                'vendor_id' => 'nullable|integer|exists:vendors,id',
+                'customer_id' => 'nullable|integer|exists:customers,id',
                 'model_number' => 'required|string|max:255',
                 'serial_number' => 'required|string|max:255|unique:deals,serial_number',
                 'material_watch' => 'nullable|string|max:255',
@@ -225,8 +234,22 @@ class DealController extends Controller
             ];
             $validatedData = $request->validate($rules);
 
+            if ($request->filled('vendor_id')) {
+                $vendor = Vendor::where('id', $request->input('vendor_id'))
+                    ->where('vendor_type', $request->input('customer_type'))
+                    ->first();
+
+                if (!$vendor) {
+                    throw ValidationException::withMessages([
+                        'vendor_id' => 'Selected vendor does not match the chosen customer type.',
+                    ]);
+                }
+            }
+
             // 2. Create deal
             $payload = $request->all();
+            $payload['vendor_id'] = $request->filled('vendor_id') ? (int) $request->input('vendor_id') : null;
+            $payload['customer_id'] = $request->filled('customer_id') ? (int) $request->input('customer_id') : null;
             $payload['review_status'] = 'under_review';
             $payload['reviewed_by'] = null;
             $payload['reviewed_at'] = null;
@@ -270,9 +293,10 @@ class DealController extends Controller
 
             DB::commit(); // Commit the transaction
             // Dispatch job to send deal created notification
-            SendDealCreatedNotificationJob::dispatch($deal);
+            //SendDealCreatedNotificationJob::dispatch($deal);
             // 6. Xero purchase invoice (supplier bill)
-            if ($deal->dealBuyerDetail === null) {
+            if ($deal->dealBuyerDetail != null) {
+                echo "Deal has buyer details, skipping Xero purchase invoice generation.";die;
                 // Prepare Xero supplier bill logic inline (no need to call dealPurchaseInvoiceGenerate)
                 try {
                     $xero = app(XeroService::class);
@@ -474,8 +498,21 @@ class DealController extends Controller
         $newImagesCount = 0;
         $remainingImages = max(0, 7 - ($existingImagesCount - $deletedImagesCount + $newImagesCount));
         try {
+            $selectedCustomerId = $request->input('customer_id', $request->input('customer_id_lookup'));
+
+            // If a deal is already paid, keep the existing customer immutable.
+            if ((int) $deal->deal_status === 4) {
+                $selectedCustomerId = $deal->customer_id;
+            }
+
+            $request->merge([
+                'customer_id' => $selectedCustomerId !== '' ? $selectedCustomerId : null,
+            ]);
+
             $rules = [
                 'customer_type' => 'required',
+                'vendor_id' => 'nullable|integer|exists:vendors,id',
+                'customer_id' => 'nullable|integer|exists:customers,id',
                 'model_number' => 'required|string|max:255',
                 'serial_number' => 'required|string|max:255|unique:deals,serial_number,' . $id,
                 'material_watch' => 'nullable|string|max:255',
@@ -515,8 +552,29 @@ class DealController extends Controller
                 ]);
             }
             $validatedData = $request->validate($rules);
+
+            if ($request->filled('vendor_id')) {
+                $vendor = Vendor::where('id', $request->input('vendor_id'))
+                    ->where('vendor_type', $request->input('customer_type'))
+                    ->first();
+
+                if (!$vendor) {
+                    throw ValidationException::withMessages([
+                        'vendor_id' => 'Selected vendor does not match the chosen customer type.',
+                    ]);
+                }
+            }
+
             $oldBuyerDetail = $deal->dealBuyerDetail ? $deal->dealBuyerDetail->toArray() : null;
-            $deal->update($request->all());
+            $updatePayload = $request->all();
+            $updatePayload['vendor_id'] = $request->filled('vendor_id') ? (int) $request->input('vendor_id') : null;
+            $updatePayload['customer_id'] = $request->filled('customer_id') ? (int) $request->input('customer_id') : null;
+
+            if ((int) $deal->deal_status === 4) {
+                $updatePayload['customer_id'] = $deal->customer_id;
+            }
+
+            $deal->update($updatePayload);
             // Buyer details update
             if ($request->deal_status == 3 || $request->deal_status == 4) {
                 
@@ -866,6 +924,169 @@ class DealController extends Controller
         }
 
         return response()->json(['name' => ''], 404);
+    }
+
+    public function vendorAutocomplete(Request $request)
+    {
+        $term = trim((string) $request->get('term', ''));
+        $customerType = $request->get('customer_type', 'individual');
+
+        if (!in_array($customerType, ['individual', 'company'], true)) {
+            return response()->json([]);
+        }
+
+        $vendors = Vendor::query()
+            ->where('vendor_type', $customerType)
+            ->when($term !== '', function ($query) use ($term, $customerType) {
+                $query->where(function ($subQuery) use ($term, $customerType) {
+                    $subQuery->where('email', 'like', "%{$term}%")
+                        ->orWhere('contact_number', 'like', "%{$term}%")
+                        ->orWhere('address', 'like', "%{$term}%")
+                        ->orWhere('city', 'like', "%{$term}%")
+                        ->orWhere('state', 'like', "%{$term}%")
+                        ->orWhere('country', 'like', "%{$term}%");
+
+                    if ($customerType === 'company') {
+                        $subQuery->orWhere('company_name', 'like', "%{$term}%")
+                            ->orWhere('abn', 'like', "%{$term}%");
+                    } else {
+                        $subQuery->orWhere('first_name', 'like', "%{$term}%")
+                            ->orWhere('last_name', 'like', "%{$term}%");
+                    }
+                });
+            })
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        return response()->json(
+            $vendors->map(function (Vendor $vendor) use ($customerType) {
+                $name = $customerType === 'company'
+                    ? ($vendor->company_name ?: 'Unnamed company')
+                    : trim(($vendor->first_name ?? '') . ' ' . ($vendor->last_name ?? ''));
+
+                $meta = array_filter([
+                    $vendor->email,
+                    $vendor->contact_number,
+                    $customerType === 'company' ? $vendor->abn : null,
+                ]);
+
+                return [
+                    'label' => trim($name) . (count($meta) ? ' - ' . implode(' | ', $meta) : ''),
+                    'value' => $vendor->id,
+                ];
+            })
+        );
+    }
+
+    public function getVendorDetails(Request $request)
+    {
+        $validated = $request->validate([
+            'vendor_id' => 'required|integer|exists:vendors,id',
+            'customer_type' => 'required|in:individual,company',
+        ]);
+
+        $vendor = Vendor::findOrFail($validated['vendor_id']);
+
+        if ($vendor->vendor_type !== $validated['customer_type']) {
+            return response()->json([
+                'message' => 'Selected vendor does not match the chosen customer type.',
+            ], 422);
+        }
+
+        $displayName = $vendor->vendor_type === 'company'
+            ? ($vendor->company_name ?: 'Unnamed company')
+            : trim(($vendor->first_name ?? '') . ' ' . ($vendor->last_name ?? ''));
+
+        return response()->json([
+            'id' => $vendor->id,
+            'vendor_type' => $vendor->vendor_type,
+            'display_name' => $displayName,
+            'individual' => [
+                'first_name' => $vendor->first_name,
+                'last_name' => $vendor->last_name,
+                'email' => $vendor->email,
+                'mobile' => $vendor->contact_number,
+                'address' => $vendor->address,
+                'city' => $vendor->city,
+                'state' => $vendor->state,
+                'country' => $vendor->country,
+                'zipcode' => $vendor->zipcode,
+            ],
+            'company' => [
+                'company_name' => $vendor->company_name,
+                'company_email' => $vendor->email,
+                'company_mobile' => $vendor->contact_number,
+                'company_address' => $vendor->address,
+                'company_city' => $vendor->city,
+                'company_state' => $vendor->state,
+                'company_country' => $vendor->country,
+                'company_zip_code' => $vendor->zipcode,
+                'abn_number' => $vendor->abn,
+                'director_name' => $vendor->director_name,
+                'dealer_licence_number' => $vendor->dealer_licence_number,
+            ],
+        ]);
+    }
+
+    public function customerAutocomplete(Request $request)
+    {
+        $term = trim((string) $request->get('term', ''));
+
+        $customers = Customer::query()
+            ->when($term !== '', function ($query) use ($term) {
+                $query->where(function ($subQuery) use ($term) {
+                    $subQuery->where('buyer_name', 'like', "%{$term}%")
+                        ->orWhere('buyer_email', 'like', "%{$term}%")
+                        ->orWhere('buyer_address', 'like', "%{$term}%")
+                        ->orWhere('buyer_city', 'like', "%{$term}%")
+                        ->orWhere('buyer_state', 'like', "%{$term}%")
+                        ->orWhere('buyer_country', 'like', "%{$term}%")
+                        ->orWhere('buyer_zipcode', 'like', "%{$term}%");
+                });
+            })
+            ->orderByDesc('id')
+            ->limit(10)
+            ->get();
+
+        return response()->json(
+            $customers->map(function (Customer $customer) {
+                $name = trim((string)($customer->buyer_name ?? ''));
+                $meta = array_filter([
+                    $customer->buyer_email,
+                    $customer->buyer_city,
+                    $customer->buyer_country,
+                ]);
+
+                return [
+                    'label' => ($name !== '' ? $name : 'Unnamed customer') . (count($meta) ? ' - ' . implode(' | ', $meta) : ''),
+                    'value' => $customer->id,
+                ];
+            })
+        );
+    }
+
+    public function getCustomerDetails(Request $request)
+    {
+        $validated = $request->validate([
+            'customer_id' => 'required|integer|exists:customers,id',
+        ]);
+
+        $customer = Customer::findOrFail($validated['customer_id']);
+
+        return response()->json([
+            'id' => $customer->id,
+            'display_name' => $customer->buyer_name ?: 'Unnamed customer',
+            'buyer' => [
+                'buyer_name' => $customer->buyer_name,
+                'buyer_email' => $customer->buyer_email,
+                'buyer_address' => $customer->buyer_address,
+                'buyer_city' => $customer->buyer_city,
+                'buyer_state' => $customer->buyer_state,
+                'buyer_country' => $customer->buyer_country,
+                'buyer_zipcode' => $customer->buyer_zipcode,
+            ],
+        ]);
     }
 
     public function markReviewed($id)

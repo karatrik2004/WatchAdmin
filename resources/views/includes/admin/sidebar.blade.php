@@ -64,6 +64,23 @@
                     </ul>
                 </li>
 
+                <!-- Customers Section -->
+                <li class="pc-item pc-hasmenu {{ isActiveUrl(['admin/customers*'], 'active pc-trigger') }}">
+                    <a href="javascript:void(0);" class="pc-link">
+                        <span class="pc-micon"><i class="material-icons-two-tone">people</i></span>
+                        <span class="pc-mtext">Customers</span>
+                        <span class="pc-arrow"><i data-feather="chevron-right"></i></span>
+                    </a>
+                    <ul class="pc-submenu">
+                        <li class="pc-item {{ isActiveUrl('admin/customers') }}">
+                            <a class="pc-link" href="{{ url('admin/customers') }}">All Customers</a>
+                        </li>
+                        <li class="pc-item {{ isActiveUrl('admin/customers/create') }}">
+                            <a class="pc-link" href="{{ url('admin/customers/create') }}">Add Customer</a>
+                        </li>
+                    </ul>
+                </li>
+
                 <!-- Manage Stocks -->
                 <li class="pc-item pc-hasmenu {{ isActiveUrl(['admin/stocks*'], 'active pc-trigger') }}">
                     <a href="javascript:void(0);" class="pc-link">

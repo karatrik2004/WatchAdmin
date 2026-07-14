@@ -16,7 +16,7 @@ class Deal extends Model
     protected $table = 'deals';
 
     protected $fillable = [
-        'first_name','last_name','email','mobile','customer_type',
+        'first_name','last_name','email','mobile','customer_type','vendor_id','customer_id',
         'model_number', 'serial_number', 'material_watch', 'dial', 'condition', 'year', 'full_set', 'purchase_price', 'sale_price', 'delivery_cost',
         'country', 'state', 'city', 'address', 'zipcode', 'deal_status', 'status', 'brand_id',
         'gst_code', 'deal_supplier_status', 'purchase_invoice_number', 'purchase_invoice_date', 'purchase_currency', 'note',
@@ -57,6 +57,16 @@ class Deal extends Model
     public function watchBrandDetail()
     {
         return $this->belongsTo('App\Models\WatchBrand', 'brand_id', 'id');
+    }
+
+    public function vendor()
+    {
+        return $this->belongsTo(Vendor::class, 'vendor_id', 'id');
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class, 'customer_id', 'id');
     }
 
     public function dealCustomerTypeDetail()
