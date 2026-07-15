@@ -64,9 +64,19 @@ class DealController extends Controller
         $deals = new Deal();
 
         if (isset($input['search_text']) && $input['search_text'] != '') {
-            $search_text = $input['search_text'];
-            $deals = $deals->where('model_number', 'LIKE', "%$search_text%");
-            $search->search_text = $search_text;
+            $searchText = trim($input['search_text']);
+            $deals = $deals->where(function ($query) use ($searchText) {
+                $query->where('watch_id', 'LIKE', "%{$searchText}%")
+                    ->orWhere('model_number', 'LIKE', "%{$searchText}%")
+                    ->orWhere('serial_number', 'LIKE', "%{$searchText}%")
+                    ->orWhere('material_watch', 'LIKE', "%{$searchText}%")
+                    ->orWhere('dial', 'LIKE', "%{$searchText}%")
+                    ->orWhere('year', 'LIKE', "%{$searchText}%")
+                    ->orWhereHas('watchBrandDetail', function ($brandQuery) use ($searchText) {
+                        $brandQuery->where('name', 'LIKE', "%{$searchText}%");
+                    });
+            });
+            $search->search_text = $searchText;
         }
 
         if (isset($input['deal_status']) && $input['deal_status'] != '') {
@@ -224,7 +234,7 @@ class DealController extends Controller
                 'purchase_price' => 'nullable|numeric|min:0',
                 'purchase_currency' => 'nullable|in:aud,usd',
                 'brand_id' => 'nullable|integer',
-                'sale_price' => 'nullable|numeric|min:0|gte:purchase_price',
+                'sale_price' => 'nullable|numeric|min:0',
                 'gst_code' => 'nullable|string|max:20',
                 'deal_supplier_status' => 'nullable|string|max:50',
                 'purchase_invoice_number' => 'nullable|string|max:255',
@@ -254,10 +264,6 @@ class DealController extends Controller
             $payload['reviewed_by'] = null;
             $payload['reviewed_at'] = null;
             $deal = Deal::create($payload);
-            if (empty($deal->watch_id)) {
-                $deal->watch_id = 'WATCH-' . str_pad((string) $deal->id, 6, '0', STR_PAD_LEFT);
-                $deal->save();
-            }
 
          
 
@@ -293,10 +299,9 @@ class DealController extends Controller
 
             DB::commit(); // Commit the transaction
             // Dispatch job to send deal created notification
-            //SendDealCreatedNotificationJob::dispatch($deal);
+            SendDealCreatedNotificationJob::dispatch($deal);
             // 6. Xero purchase invoice (supplier bill)
-            if ($deal->dealBuyerDetail != null) {
-                echo "Deal has buyer details, skipping Xero purchase invoice generation.";die;
+            if ($deal->dealBuyerDetail === null) {        
                 // Prepare Xero supplier bill logic inline (no need to call dealPurchaseInvoiceGenerate)
                 try {
                     $xero = app(XeroService::class);
@@ -369,7 +374,8 @@ class DealController extends Controller
                     $bill = $xero->createBill($deal->supplier_xero_id, $lineItems, $deal->xero_bill_id, $deal->purchase_invoice_date, $deal->purchase_invoice_number);
                     $deal->xero_bill_id = $bill['bill_id'];
                     $deal->save();
-                } catch (\Exception $ex) {
+                } 
+                catch (\Exception $ex) {
                     \Log::error('Xero purchase bill creation failed (store)', [
                         'exception_message' => $ex->getMessage(),
                         'deal_id' => $deal->id,
@@ -520,7 +526,7 @@ class DealController extends Controller
                 'year' => 'nullable|integer|min:1900|max:' . date('Y'),
                 'full_set' => 'nullable',
                 'purchase_price' => 'nullable|numeric|min:0',
-                'sale_price' => 'nullable|numeric|min:0|gte:purchase_price',
+                'sale_price' => 'nullable|numeric|min:0',
                 'delivery_cost' => 'nullable|numeric|min:0',
                 'brand_id' => 'nullable|integer',
                 'deal_status' => 'nullable|integer',
@@ -759,14 +765,42 @@ class DealController extends Controller
 
     public function downloadProductExcel(Request $request)
     {
-
         $input = $request->all();
-        $deals = new Deal();
+        $deals = Deal::query()->with('watchBrandDetail');
 
-        if (isset($input['search_text']) && $input['search_text'] != '') {
-            $search_text = $input['search_text'];
-            $deals = $deals->where('model_number', 'LIKE', "%$search_text%");
+        if (isset($input['search_text']) && trim((string)$input['search_text']) !== '') {
+            $searchText = trim((string)$input['search_text']);
+            $deals->where(function ($query) use ($searchText) {
+                $query->where('watch_id', 'LIKE', "%{$searchText}%")
+                    ->orWhere('model_number', 'LIKE', "%{$searchText}%")
+                    ->orWhere('serial_number', 'LIKE', "%{$searchText}%")
+                    ->orWhere('material_watch', 'LIKE', "%{$searchText}%")
+                    ->orWhere('dial', 'LIKE', "%{$searchText}%")
+                    ->orWhere('year', 'LIKE', "%{$searchText}%")
+                    ->orWhereHas('watchBrandDetail', function ($brandQuery) use ($searchText) {
+                        $brandQuery->where('name', 'LIKE', "%{$searchText}%");
+                    });
+            });
         }
+
+        if (isset($input['deal_status']) && $input['deal_status'] !== '') {
+            $deals->where('deal_status', $input['deal_status']);
+        }
+
+        if (isset($input['brand_id']) && $input['brand_id'] !== '') {
+            $deals->where('brand_id', $input['brand_id']);
+        }
+
+        if (isset($input['start_date']) && $input['start_date'] !== '') {
+            $startDate = Carbon::createFromFormat('Y-m-d', $input['start_date'])->startOfDay();
+            $deals->where('created_at', '>=', $startDate);
+        }
+
+        if (isset($input['end_date']) && $input['end_date'] !== '') {
+            $endDate = Carbon::createFromFormat('Y-m-d', $input['end_date'])->endOfDay();
+            $deals->where('created_at', '<=', $endDate);
+        }
+
         $deals = $deals->orderBy('id', 'desc')->get();
 
 
@@ -781,49 +815,42 @@ class DealController extends Controller
         ];
 
         $columns = [
-            'ID',
-            'Model Number',
+            'Watch ID',
+            'Brand',
+            'Model',
             'Serial Number',
             'Reference Number',
-            'Condition',
+            'Dial',
             'Year',
-            'Full set or not',
-            'Purchase Price',
-            'Sale Price',
-            'Country',
-            'State',
-            'City',
-            'Address',
-            'Zipcode',
-            'Deal Status'
-
+            'Deal Status',
+            'Review Status',
+            'Created',
+            'Updated',
         ];
 
         $callback = function () use ($deals, $columns) {
             $file = fopen('php://output', 'w');
             fputcsv($file, $columns);
             if (!empty($deals)) {
-                $countries = $this->getCountires();
-                $states = $this->getStates();
-                $deal_status = Config::get('constants.DEAL_STATUS');
+                $dealStatuses = Config::get('constants.DEAL_STATUS', []);
+                $reviewStatuses = Config::get('constants.REVIEW_STATUS', []);
                 foreach ($deals as $deal) {
-                    $cities = $this->getCities($deal->state_id);
+                    $dealStatusLabel = strip_tags((string)($dealStatuses[$deal->deal_status] ?? 'N/A'));
+                    $reviewKey = $deal->review_status ?? 'under_review';
+                    $reviewStatusLabel = $reviewStatuses[$reviewKey] ?? 'Under Review';
+
                     fputcsv($file, [
-                        $deal['id'],
-                        $deal['model_number'],
-                        $deal['serial_number'],
-                        $deal['material_watch'],
-                        $deal['condition'],
-                        $deal['year'],
-                        $deal['full_set'],
-                        $deal['purchase_price'],
-                        $deal['sale_price'],
-                        (!empty($deal['country_id']) && isset($countries[$deal['country_id']])) ? $countries[$deal['country_id']] : '',
-                        (!empty($deal['state_id']) && isset($states[$deal['state_id']])) ? $states[$deal['state_id']] : '',
-                        (!empty($deal['city_id']) && isset($cities[$deal['city_id']])) ? $cities[$deal['city_id']] : '',
-                        $deal['address'],
-                        $deal['zipcode'],
-                        $deal_status[$deal['deal_status']]
+                        $deal->watch_id ?: $deal->id,
+                        $deal->watchBrandDetail->name ?? '',
+                        $deal->model_number ?? '',
+                        $deal->serial_number ?? 'N/A',
+                        $deal->material_watch ?? 'N/A',
+                        $deal->dial ?? 'N/A',
+                        $deal->year ?? 'N/A',
+                        $dealStatusLabel,
+                        $reviewStatusLabel,
+                        $deal->created_at ? Carbon::parse($deal->created_at)->format('D, M d, Y') : 'N/A',
+                        $deal->updated_at ? Carbon::parse($deal->updated_at)->format('D, M d, Y') : 'N/A',
                     ]);
                 }
             }

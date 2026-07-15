@@ -31,22 +31,7 @@
                         @endif
                     </ul>
                 </li>
-                    <!-- Brands Section -->
-                    <li class="pc-item pc-hasmenu {{ isActiveUrl(['admin/brands*'], 'active pc-trigger') }}">
-                        <a href="javascript:void(0);" class="pc-link">
-                            <span class="pc-micon"><i class="material-icons-two-tone">watch</i></span>
-                            <span class="pc-mtext">Brands</span>
-                            <span class="pc-arrow"><i data-feather="chevron-right"></i></span>
-                        </a>
-                        <ul class="pc-submenu">
-                            <li class="pc-item {{ isActiveUrl('admin/brands') }}">
-                                <a class="pc-link" href="{{ url('admin/brands') }}">All Brands</a>
-                            </li>
-                            <li class="pc-item {{ isActiveUrl('admin/brands/create') }}">
-                                <a class="pc-link" href="{{ url('admin/brands/create') }}">Add Brand</a>
-                            </li>
-                        </ul>
-                    </li>
+                    
                 <!-- Vendors Section -->
                 <li class="pc-item pc-hasmenu {{ isActiveUrl(['admin/vendors*'], 'active pc-trigger') }}">
                     <a href="javascript:void(0);" class="pc-link">
@@ -81,19 +66,7 @@
                     </ul>
                 </li>
 
-                <!-- Manage Stocks -->
-                <li class="pc-item pc-hasmenu {{ isActiveUrl(['admin/stocks*'], 'active pc-trigger') }}">
-                    <a href="javascript:void(0);" class="pc-link">
-                        <span class="pc-micon"><i class="material-icons-two-tone">settings</i></span>
-                        <span class="pc-mtext">Manage Stocks</span>
-                        <span class="pc-arrow"><i data-feather="chevron-right"></i></span>
-                    </a>
-                    <ul class="pc-submenu">
-                        <li class="pc-item {{ isActiveUrl('admin/stocks') }}">
-                            <a class="pc-link" href="{{ url('admin/stocks') }}">All Stocks</a>
-                        </li>
-                    </ul>
-                </li>
+              
                 <!-- Shipping: deals + invoices + create -->
                 <li class="pc-item pc-hasmenu {{ isActiveUrl(['admin/shipping-deals','admin/shipping-invoices*'], 'active pc-trigger') }}">
                     <a href="javascript:void(0);" class="pc-link">
@@ -113,6 +86,35 @@
                         </li>
                     </ul>
                 </li>
+                  <!-- Manage Stocks -->
+                <li class="pc-item pc-hasmenu {{ isActiveUrl(['admin/stocks*'], 'active pc-trigger') }}">
+                    <a href="javascript:void(0);" class="pc-link">
+                        <span class="pc-micon"><i class="material-icons-two-tone">settings</i></span>
+                        <span class="pc-mtext">Manage Stocks</span>
+                        <span class="pc-arrow"><i data-feather="chevron-right"></i></span>
+                    </a>
+                    <ul class="pc-submenu">
+                        <li class="pc-item {{ isActiveUrl('admin/stocks') }}">
+                            <a class="pc-link" href="{{ url('admin/stocks') }}">All Stocks</a>
+                        </li>
+                    </ul>
+                </li>
+                <!-- Brands Section -->
+                    <li class="pc-item pc-hasmenu {{ isActiveUrl(['admin/brands*'], 'active pc-trigger') }}">
+                        <a href="javascript:void(0);" class="pc-link">
+                            <span class="pc-micon"><i class="material-icons-two-tone">watch</i></span>
+                            <span class="pc-mtext">Brands</span>
+                            <span class="pc-arrow"><i data-feather="chevron-right"></i></span>
+                        </a>
+                        <ul class="pc-submenu">
+                            <li class="pc-item {{ isActiveUrl('admin/brands') }}">
+                                <a class="pc-link" href="{{ url('admin/brands') }}">All Brands</a>
+                            </li>
+                            <li class="pc-item {{ isActiveUrl('admin/brands/create') }}">
+                                <a class="pc-link" href="{{ url('admin/brands/create') }}">Add Brand</a>
+                            </li>
+                        </ul>
+                    </li>
                 <!-- Company Settings (separate items) -->
                 <li class="pc-item {{ isActiveUrl('admin/company-settings', 'active') }}">
                     <a href="{{ url('admin/company-settings') }}" class="pc-link">

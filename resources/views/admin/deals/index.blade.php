@@ -88,9 +88,9 @@
                             <div class="form-floating">
                                 {{ html()->text('search_text')
                                     ->class('form-control')
-                                    ->placeholder('Search by Model Number')
+                                    ->placeholder('Search by Watch ID, Brand, Model, Serial, Reference Number...')
                                 }}
-                                <label for="search_text">Search by Model Number</label>
+                                <label for="search_text">Search Deals</label>
                             </div>
                         </div>
 
@@ -182,17 +182,16 @@
                     <table class="table table-hover">
                         <thead>
                         <tr>
-                            <th>#</th>
+                            {{-- <th>#</th> --}}
                             <th>Watch ID</th>
-                            <th>Model No.</th>
-                            <th>Serial No.</th>
-                            <th>Year</th>
-                            <th>Deal Status</th>
-                            <th>Review Status</th>
-                            <th>Brand</th>
-                            <th>Created</th>
-                            <th>Updated</th>
-                            <th class="text-right">Action</th>
+                             <th>Brand</th>
+                            <th>Model</th>
+                            <th>Serial / Reference No.</th>
+                            <th>Dial / Year</th>
+                            <th>Deal / Review Status</th>
+                           
+                            <th>Created / Updated</th>
+                            <th class="text-center">Action</th>
                         </tr>
                         </thead>
                         <tbody class="list" id="countries">
@@ -207,30 +206,53 @@
                                     $reviewRowClass = $reviewStatusKey === 'reviewed' ? 'review-row-reviewed' : 'review-row-under-review';
                                 @endphp
                                 <tr class="{{ $reviewRowClass }}">
-                                    <td>{{ ++$i }}</td>
-                                    <td>{{ $deal->watch_id ?? $deal->id }}</td>
+                                    {{-- <td>{{ ++$i }}</td> --}}
+                                    <td>{{ $deal->id }}</td>
+                                    <td>{{$deal->watchBrandDetail->name ?? ""}}</td>
                                     <td>{{ $deal->model_number }}</td>
-                                    <td>{{ $deal->serial_number }}</td>
-                                    <td>{{ $deal->year }}</td>
+                                    <td>
+                                        <div><strong>Serial:</strong> {{ $deal->serial_number ?? 'N/A' }}</div>
+                                        <div><strong>Reference:</strong> {{ $deal->material_watch ?? 'N/A' }}</div>
+                                    </td>
+                                    <td>
+                                        <div><strong>Dial:</strong> {{ $deal->dial ?? 'N/A' }}</div>
+                                        <div><strong>Year:</strong> {{ $deal->year ?? 'N/A' }}</div>
+                                    </td>
                                     <td>
                                         @php $deal_status = Config::get('constants.DEAL_STATUS'); @endphp
-                                        {!! $deal_status[$deal->deal_status] !!}
+                                        <div><strong>Deal:</strong> {!! $deal_status[$deal->deal_status] !!}</div>
+                                        <div class="mt-1">
+                                            <span class="review-status-pill {{ $reviewBadgeClass }}">
+                                                <i class="fa {{ $reviewStatusKey === 'reviewed' ? 'fa-check-circle' : 'fa-clock-o' }}"></i>
+                                                {{ $reviewLabel }}
+                                            </span>
+                                        </div>
                                     </td>
+                                   
                                     <td>
-                                        <span class="review-status-pill {{ $reviewBadgeClass }}">
-                                            <i class="fa {{ $reviewStatusKey === 'reviewed' ? 'fa-check-circle' : 'fa-clock-o' }}"></i>
-                                            {{ $reviewLabel }}
-                                        </span>
+                                        <div><strong>Created:</strong> {{ date('D, M d, Y', strtotime($deal->created_at)) }}</div>
+                                        <div><strong>Updated:</strong> {{ date('D, M d, Y', strtotime($deal->updated_at)) }}</div>
                                     </td>
-                                    <td>{{$deal->watchBrandDetail->name ?? ""}}</td>
-                                    <td>{{date('D, M d, Y', strtotime($deal->created_at))}}</td>
-                                    <td>{{date('D, M d, Y', strtotime($deal->updated_at))}}</td>
                                     <td class="noselect text-center align-middle">
                                         <div class="d-flex justify-content-center align-items-center gap-2">
                                             <a href="{{ Route('admin.deals.show', $deal->id ) }}"
                                                class="btn btn-success btn-sm" data-toggle="tooltip" title="View">
                                                 <i class="fa fa-eye"></i>
                                             </a>
+                                              @if(auth('admin')->user()->hasRole('super admin'))
+                                                <a href="{{ url('/admin/deals/'.$deal->id.'/edit') }}"
+                                                   class="btn btn-info btn-sm action-btn edit" data-toggle="tooltip"
+                                                   title=""
+                                                   data-original-title="{{trans('admin.EDIT')}}"><i
+                                                        class="far fa-edit"></i>
+                                                </a>
+                                                <a href="{{ Route('admin.delete-deal', $deal->id ) }}"
+                                                   onclick="confirmation(event)"
+                                                   class="btn btn-danger btn-sm action-btn delete" data-toggle="tooltip"
+                                                   title="Delete">
+                                                    <i class="fa fa-trash"></i>
+                                                </a>
+                                            @endif
                                             @if(($deal->review_status ?? 'under_review') !== 'reviewed')
                                                 <form method="POST" action="{{ route('admin.deals.mark-reviewed', $deal->id) }}" class="d-inline" onsubmit="return confirm('Mark this deal as reviewed and notify funding team?');">
                                                     @csrf
@@ -245,34 +267,21 @@
                                             @endif
                                             <!-- Sale Invoice PDF buttons (USD / AUD) -->
                                             <a href="{{ route('admin.invoice.download', ['deal_id' => $deal->id, 'currency' => 'usd']) }}" target="_blank"
-                                               class="btn btn-secondary btn-sm" data-toggle="tooltip" title="USD Sale Invoice PDF">
+                                               class="btn btn-secondary btn-sm action-btn" data-toggle="tooltip" title="USD Sale Invoice PDF" aria-label="USD Sale Invoice PDF">
                                                 <i class="fa fa-file-pdf"></i> USD
                                             </a>
                                             <a href="{{ route('admin.invoice.download', ['deal_id' => $deal->id, 'currency' => 'aud']) }}" target="_blank"
-                                               class="btn btn-secondary btn-sm" data-toggle="tooltip" title="AUD Sale Invoice PDF">
+                                               class="btn btn-secondary btn-sm action-btn" data-toggle="tooltip" title="AUD Sale Invoice PDF" aria-label="AUD Sale Invoice PDF">
                                                 <i class="fa fa-file-pdf"></i> AUD
                                             </a>
-                                            @if(auth('admin')->user()->hasRole('super admin'))
-                                                <a href="{{ url('/admin/deals/'.$deal->id.'/edit') }}"
-                                                   class="btn btn-info btn-sm action-btn edit" data-toggle="tooltip"
-                                                   title=""
-                                                   data-original-title="{{trans('admin.EDIT')}}"><i
-                                                        class="far fa-edit"></i>
-                                                </a>
-                                                <a href="{{ Route('admin.delete-deal', $deal->id ) }}"
-                                                   onclick="confirmation(event)"
-                                                   class="btn btn-danger btn-sm action-btn delete" data-toggle="tooltip"
-                                                   title="Delete">
-                                                    <i class="fa fa-trash"></i>
-                                                </a>
-                                            @endif
+                                          
                                         </div>
                                     </td>
                                 </tr>
                             @endforeach
                         @else
                             <tr>
-                                <td class="noselect text-center" colspan="6">{{trans('admin.NO_ITEM_FOUND')}}</th>
+                                <td class="noselect text-center" colspan="9">{{trans('admin.NO_ITEM_FOUND')}}</th>
                             </tr>
                         @endif
                         </tbody>

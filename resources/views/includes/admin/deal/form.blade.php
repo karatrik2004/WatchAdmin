@@ -1509,7 +1509,7 @@
             }
         },
         messages: {
-            model_number: "Model number is required",
+            model_number: "Model is required",
             serial_number: "Serial number is required",
             material_watch: "Reference number is required",
             condition: "Condition is required",

@@ -393,7 +393,7 @@
                                             <div class="flex-shrink-0 w-50"><span class="form-label">Watch ID:</span>
                                             </div>
                                             <div class="flex-grow-1"><span
-                                                    class="value-box">{{ $deal->watch_id ?? $deal->id }}</span></div>
+                                                    class="value-box">{{ $deal->id }}</span></div>
                                         </div>
                                     </div>
                                     <div class="col-md-6">

@@ -9,7 +9,7 @@
 <h2>Deal Updated</h2>
 <p>A deal has been updated in the system. Here are the updated details:</p>
 <ul>
-    <li><strong>Watch ID:</strong> {{ $deal->watch_id ?? '' }}</li>
+    <li><strong>Watch ID:</strong> {{ $deal->id }}</li>
     <li><strong>Brand:</strong> {{ $deal->watchBrandDetail->name ?? '-' }}</li>
     <li><strong>Model:</strong> {{ $deal->model_number ?? '-' }}</li>
     <li><strong>Serial Number:</strong> {{ $deal->serial_number ?? '-' }}</li>
@@ -35,19 +35,10 @@
 
         @if($deal->is_loss && optional($deal->dealBuyerDetail)->buyer_loss_remark)
             <li><strong>Loss Remark:</strong> {{ $deal->dealBuyerDetail->buyer_loss_remark }}</li>
-        @endif
-
-        {{-- <li><strong>Buyer email:</strong> {{ $deal->dealBuyerDetail->buyer_email ?: '-' }}</li>
-        <li><strong>Buyer Country:</strong> {{ $deal->dealBuyerDetail->buyer_country }}</li>
-        <li><strong>Buyer State:</strong> {{ $deal->dealBuyerDetail->buyer_state }}</li>
-        <li><strong>Buyer City:</strong> {{ $deal->dealBuyerDetail->buyer_city }}</li>
-        <li><strong>Buyer Address:</strong> {{ $deal->dealBuyerDetail->buyer_address }}</li>
-        <li><strong>Buyer Zipcode:</strong> {{ $deal->dealBuyerDetail->buyer_zipcode }}</li>
-        <li><strong>Buyer Sale Price:</strong> {{ $deal->dealBuyerDetail->buyer_sale_price }}</li> --}}
+        @endif    
        
         
-    @endif    
-   
+    @endif  
    
 </ul>
 <p>Login to the admin panel for more details.</p>

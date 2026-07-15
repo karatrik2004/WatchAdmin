@@ -42,9 +42,11 @@ class Deal extends Model
 
     protected static function booted(): void
     {
-        static::creating(function (Deal $deal): void {
+        static::created(function (Deal $deal): void {
             if (empty($deal->watch_id)) {
-                $deal->watch_id = 'WATCH-' . str_pad((string) $deal->getKey(), 6, '0', STR_PAD_LEFT);
+                $deal->forceFill([
+                    'watch_id' => 'WATCH-' . str_pad((string) $deal->getKey(), 6, '0', STR_PAD_LEFT),
+                ])->saveQuietly();
             }
         });
     }

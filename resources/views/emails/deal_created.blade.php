@@ -9,7 +9,7 @@
 <h2>New Deal Created</h2>
 <p>A new deal has been created in the system. Here are the details:</p>
 <ul>
-    <li><strong>Watch ID:</strong> {{ $deal->watch_id ?? $deal->id }}</li>
+    <li><strong>Watch ID:</strong> {{ $deal->id }}</li>
     <li><strong>Brand:</strong> {{ $deal->watchBrandDetail->name ?? 'N/A' }}</li>
     <li><strong>Model:</strong> {{ $deal->model_number ?? 'N/A' }}</li>
     <li><strong>Serial Number:</strong> {{ $deal->serial_number ?? 'N/A' }}</li>
