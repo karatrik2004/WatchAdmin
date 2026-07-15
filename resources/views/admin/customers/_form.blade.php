@@ -8,33 +8,33 @@
     </div>
 @endif
 
-<div class="row">
-    <div class="col-md-6 mb-3">
-        <label>Buyer Name <span class="text-danger">*</span></label>
+<div class="row g-3">
+    <div class="col-md-6">
+        <label class="form-label fw-semibold">Buyer Name <span class="text-danger">*</span></label>
         <input type="text" name="buyer_name" required class="form-control" maxlength="255" value="{{ old('buyer_name', $customer->buyer_name ?? '') }}">
     </div>
-    <div class="col-md-6 mb-3">
-        <label>Buyer Email</label>
+    <div class="col-md-6">
+        <label class="form-label fw-semibold">Buyer Email</label>
         <input type="email" name="buyer_email" class="form-control" maxlength="255" value="{{ old('buyer_email', $customer->buyer_email ?? '') }}">
     </div>
-    <div class="col-md-12 mb-3">
-        <label>Address <span class="text-danger">*</span></label>
+    <div class="col-md-12">
+        <label class="form-label fw-semibold">Address <span class="text-danger">*</span></label>
         <input type="text" name="buyer_address" required class="form-control" maxlength="255" value="{{ old('buyer_address', $customer->buyer_address ?? '') }}">
     </div>
-    <div class="col-md-4 mb-3">
-        <label>City <span class="text-danger">*</span></label>
+    <div class="col-md-6">
+        <label class="form-label fw-semibold">City <span class="text-danger">*</span></label>
         <input type="text" name="buyer_city" required class="form-control" maxlength="255" value="{{ old('buyer_city', $customer->buyer_city ?? '') }}">
     </div>
-    <div class="col-md-4 mb-3">
-        <label>State <span class="text-danger">*</span></label>
+    <div class="col-md-6">
+        <label class="form-label fw-semibold">State <span class="text-danger">*</span></label>
         <input type="text" name="buyer_state" required class="form-control" maxlength="255" value="{{ old('buyer_state', $customer->buyer_state ?? '') }}">
     </div>
-    <div class="col-md-4 mb-3">
-        <label>Country <span class="text-danger">*</span></label>
+    <div class="col-md-6">
+        <label class="form-label fw-semibold">Country <span class="text-danger">*</span></label>
         <input type="text" name="buyer_country" required class="form-control" maxlength="255" value="{{ old('buyer_country', $customer->buyer_country ?? '') }}">
     </div>
-    <div class="col-md-4 mb-3">
-        <label>Zipcode <span class="text-danger">*</span></label>
+    <div class="col-md-6">
+        <label class="form-label fw-semibold">Zipcode <span class="text-danger">*</span></label>
         <input type="text" name="buyer_zipcode" required class="form-control" maxlength="50" value="{{ old('buyer_zipcode', $customer->buyer_zipcode ?? '') }}">
     </div>
 </div>

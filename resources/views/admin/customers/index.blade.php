@@ -9,13 +9,9 @@
     <div class="col-md-12">
         <div class="card">
             <div class="card-header">
-                <div class="row">
-                    <div class="col-md-8">
-                        <h4>All Customers</h4>
-                    </div>
-                    <div class="col-md-4 text-end">
-                        <a href="{{ route('admin.customers.create') }}" class="btn btn-success btn-sm">Add Customer</a>
-                    </div>
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <h4 class="mb-0">All Customers</h4>
+                    <a href="{{ route('admin.customers.create') }}" class="btn btn-success btn-sm">Add Customer</a>
                 </div>
             </div>
             <div class="card-body table-border-style mb-2">
